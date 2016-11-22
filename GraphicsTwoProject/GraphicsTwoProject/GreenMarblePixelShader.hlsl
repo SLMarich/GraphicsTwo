@@ -1,0 +1,183 @@
+texture2D diffuseTexture : register(t0);
+//Cube texture
+TextureCube boxTexture : register (t1);
+
+
+SamplerState sampleFilter : register(s0);
+SamplerState linearFilter : register(s1);
+
+cbuffer	lightBuffer : register(b0) {
+	float4	pointLightColor;
+	float4	pointLightPosition;
+	float4	ambientTerm;
+	float4	cameraPosition;
+
+	float4	spotlightColor;
+	float3	spotlightDirection;
+	float	spotlightConeRatio;
+	float3	spotlightPosition;
+	float	lightRange;
+
+	float4x4	pointRotationMatrix;
+
+};
+
+// Per-pixel color data passed through the pixel shader.
+struct GroundPixelShaderInput
+{
+	float4 pos : SV_POSITION;
+	float2 uv : TEXCOORD;
+	float3 norm : NORMAL;
+	float4 worldPos : W_POS;
+	float3 tangent : TANGENT;
+	float3 binormal : BINORMAL;
+};
+
+// A pass-through function for the (interpolated) color data.
+float4 main(GroundPixelShaderInput input) : SV_TARGET
+{
+	float4 specularIntensity;
+float3 reflection;
+float4 specular;
+float4 specularDirection = normalize(cameraPosition - input.worldPos);
+float specularPower = 16.0f;
+float3 directionalLightDirection = float3(spotlightPosition.x*0.5f, -0.5f, spotlightPosition.z*0.5f);
+
+float4 textureColor = diffuseTexture.Sample(sampleFilter, input.uv);
+
+if (textureColor.w < 0.5f) {
+	discard;
+}
+
+
+
+//float4 bumpMap = normalTexture.Sample(sampleFilter, input.uv);
+////Adjust range of normal from (0, +1) to (-1, +1)
+//bumpMap = (bumpMap * 2.0f) - 1.0f;
+////Calculate the normal from the data in the bump map.
+//float3 bumpNormal = (bumpMap.x * input.tangent) + (bumpMap.y * input.binormal) + (bumpMap.z * input.norm);
+////Normalize the resulting normal
+//bumpNormal = normalize(bumpNormal);
+
+//Invert light direction for calculations
+float3 invspotlightDirection = -spotlightDirection;
+
+//Point light calculation
+//Determine direction
+float3 pointLightTextureDirection = normalize(pointLightPosition.xyz - input.worldPos.xyz);
+float3 pointLightDirection = normalize(pointLightPosition.xyz - input.worldPos.xyz);
+
+//Invert light direction
+pointLightTextureDirection = mul(-pointLightTextureDirection,pointRotationMatrix);
+pointLightDirection = -pointLightDirection;
+
+//Determine distance
+float vertex_length = length(pointLightDirection);
+//Get magnitude
+pointLightDirection /= vertex_length;
+//Find range attenuation
+float rangeAttenuation = 1.0f - saturate(vertex_length / lightRange);
+rangeAttenuation *= rangeAttenuation;
+//Get ratio between direction and normal
+//Adding normal texture
+float pointLightIntensity = dot(pointLightDirection, -input.norm);
+pointLightIntensity = saturate(pointLightIntensity);
+//Get point light result based on the color, attenuation, and intensity
+//if (pointLightIntensity > 0.0f) {
+//	//Sample pixel from specular map
+//	//specularIntensity = specularTexture.Sample(oakFilter, input.uv);
+//	specularIntensity = 16.0f;
+//	//Calculate the reflection vector based on the light intensity, normal vector, and light direction
+//	reflection = normalize(2 * specularIntensity*input.norm/*bumpNormal*/ - pointLightDirection);
+//	//Determine the amount of specular light based on the reflection vector, viewing direction, and specular power
+//	specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
+//	//Use the specular map to determine the intensity of a specular light at this pixel
+//	specular = specular*specularIntensity;
+//	//Add the specular component last to the output color
+//}
+//float4 pointLightResult = pointLightColor*rangeAttenuation*pointLightIntensity + specular;
+//float3 pointLightResult = pointLightColor.xyz*rangeAttenuation*pointLightRatio;
+
+float4 newPointLightColor = boxTexture.Sample(linearFilter, pointLightTextureDirection);
+
+float4 pointLightResult = newPointLightColor*rangeAttenuation*pointLightIntensity;// +specular;
+
+//Point Specular light caulcation
+//specularDirection = -specularDirection;
+//float3 specularHalfVector = normalize(pointLightDirection + specularDirection);
+//float specularIntensity = pow(saturate(dot(input.norm, normalize(specularHalfVector))), 64.0f);
+//Adding normal texture
+//float specularIntensity = pow(saturate(dot(bumpNormal, normalize(specularHalfVector))), 64.0f);
+//float4 specularResult = pointLightColor * rangeAttenuation * (specularIntensity * specularIntensity) * 2.0f;
+//float3 specularResult = pointLightColor.xyz * rangeAttenuation * (specularIntensity * specularIntensity) * 2.0f;
+
+//Directional Lighting
+//Get ratio
+//float directionalLightRatio = saturate(dot(float3(0.2f, 0.5f, -0.5f), input.norm.xyz));
+//Adding normal texture
+//float directionalLightRatio = saturate(dot(float3(-0.2f, -0.5f, 0.5f), bumpNormal));
+//	Add movement
+float directionalLightRatio = saturate(dot(directionalLightDirection, input.norm));
+//Add color
+float4 directionalResult = directionalLightRatio * float4(0.5f, 0.5f, 0.3f,1.0f);
+//Give directional specular
+//Sample pixel from specular map
+//specularIntensity = specularTexture.Sample(sampleFilter, input.uv);
+////Calculate the reflection vector based on the light intensity, normal vector, and light direction
+//reflection = normalize(2.0f * specularIntensity*norm - directionalLightDirection);
+////Determine the amount of specular light based on the reflection vector, viewing direction, and specular power
+//specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
+////Use the specular map to determine the intensity of a specular light at this pixel
+//specular = specular*specularIntensity;
+////Add the specular component last to the output color
+//directionalResult = directionalResult + specular;
+
+//Spot Lighting
+//Get the spot light's noramlized direction
+float3 spotlightNormDirection = normalize(spotlightPosition - input.worldPos.xyz);
+//Get surface ratio
+float surfaceRatio = saturate(dot(-spotlightNormDirection, invspotlightDirection));
+//Get spotlight ratio
+//float spotlightRatio = saturate(dot(invspotlightDirection, input.norm));
+//Adding normal texture
+float spotlightRatio = saturate(dot(invspotlightDirection, -input.norm));
+//Get inner and outter cones
+float innerCone = cos(2.0f * (3.14515f / 180.0f));
+float outterCone = cos(4.0f * (3.14515f / 180.0f));
+//Attenuate
+float spotlightAttenuation = 1.0f - saturate((innerCone - surfaceRatio) / (innerCone - outterCone));
+//Get result
+float4 spotlightResult = spotlightRatio * spotlightColor * spotlightAttenuation;
+//spotLight specular
+////Sample pixel from specular map
+//specularIntensity = specularTexture.Sample(sampleFilter, input.uv);
+////Calculate the reflection vector based on the light intensity, normal vector, and light direction
+//reflection = normalize(2.0f * specularIntensity*norm - spotlightNormDirection);
+////Determine the amount of specular light based on the reflection vector, viewing direction, and specular power
+//specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
+////Use the specular map to determine the intensity of a specular light at this pixel
+//specular = specular*specularIntensity;
+////Add the specular component last to the output color
+//spotlightResult += specular;
+
+//float4 sampled = diffuseTexture.Sample(oakFilter, input.uv) * saturate(pointLightResult + ambientTerm + specularResult + directionalResult + spotlightResult);
+//float4 sampled = textureColor * saturate(pointLightResult + ambientTerm + specularResult + directionalResult + spotlightResult);
+//Specular now added to each light
+
+float4 sampled = textureColor * saturate(pointLightResult + ambientTerm);
+
+//float4 sampled = textureColor * saturate(pointLightResult + ambientTerm + directionalResult + spotlightResult);
+//sampled.a = clamp(sampled.a - 0.05, 0, 1);
+sampled.r = sampled.r*sampled.a;
+sampled.g = sampled.g*sampled.a;
+sampled.b = sampled.b*sampled.a;
+
+//clip(sampled.a - 0.02f);
+//sampled.a = 1.0f;
+
+//Toying with depth coloring
+//float depth = 1.0f - (input.worldPos.z / input.worldPos.w);
+//return float4(depth, depth, depth, 1.0f);
+
+return float4(sampled.xyz, textureColor.w);
+}

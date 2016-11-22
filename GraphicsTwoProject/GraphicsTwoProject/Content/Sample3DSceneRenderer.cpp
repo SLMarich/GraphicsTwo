@@ -73,8 +73,8 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 	);
 
 	// Eye is at (0,0.7,1.5), looking at point (0,-0.1,0) with the up-vector along the y-axis.
-	static const XMVECTORF32 eye = { 0.0f, 0.0f, -3.5f, 0.0f };
-	static const XMVECTORF32 at = { 0.0f, -0.1f, 1.0f, 0.0f };
+	static const XMVECTORF32 eye = { 0.0f, 1.5f, -10.0f, 0.0f };
+	static const XMVECTORF32 at = { 0.0f, 1.0f, 0.0f, 0.0f };
 	static const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
 
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtRH(eye, at, up)));
@@ -144,6 +144,47 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	mouse_move = false;
 #pragma endregion
 
+#pragma region CUBELIGHTUPDATE
+	XMStoreFloat4x4(&cubelightModel, DirectX::XMMatrixIdentity());
+	XMStoreFloat4x4(&cubelightModel, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
+		XMMatrixTranspose(XMMatrixRotationZ((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+#pragma endregion
+
+#pragma region GREENMARBLEUPDATE
+	XMStoreFloat4x4(&greenMarbleModel, XMMatrixIdentity());
+#pragma endregion
+
+#pragma region LIGHTINGUPDATES
+	sampleLight.cameraPosition.x = camera._41;
+	sampleLight.cameraPosition.y = camera._42;
+	sampleLight.cameraPosition.z = camera._43;
+	sampleLight.cameraPosition.w = camera._44;
+	sampleLight.ambientTerm = DirectX::XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
+	sampleLight.lightRange = 25.0f;
+
+	sampleLight.pointLightColor = DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+	sampleLight.pointLightPosition = DirectX::XMFLOAT4(cubelightModel._14, cubelightModel._24, cubelightModel._34, cubelightModel._44);
+
+	sampleLight.spotlightColor = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+	sampleLight.spotlightConeRatio = 5.0f;
+	sampleLight.spotlightDirection = DirectX::XMFLOAT3(0.0f, 2.0f, 0.0f);
+	//Move spotlight around
+	sampleLight.spotlightPosition = DirectX::XMFLOAT3(cubelightModel._14, cubelightModel._24, cubelightModel._34);
+
+	XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
+		XMMatrixTranspose(XMMatrixRotationZ((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+
+	XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMMatrixInverse(&XMMatrixDeterminant(XMLoadFloat4x4(&sampleLight.pointRotationMatrix)), XMLoadFloat4x4(&sampleLight.pointRotationMatrix)));
+#pragma endregion
+
+#pragma region INSTANCEUPDATES
+	activeInstances = 900;
+	for (unsigned int i = 0; i < 30; i++) {
+		for (unsigned int j = 0; j < 30; j++) {
+			instanceList[i * 30 + j].position = DirectX::XMFLOAT3((float)(i+i+i)-30.0f, -2.0f, (float)(j+j+j)-30.0f);
+		}
+	}
+#pragma endregion
 }
 
 // Rotate the 3D cube model a set amount of radians.
@@ -265,7 +306,8 @@ void Sample3DSceneRenderer::Render()
 
 #pragma region CUBEDRAW
 	// Prepare the constant buffer to send it to the graphics device.
-	XMStoreFloat4x4(&m_constantBufferData.model,XMMatrixTranspose(XMLoadFloat4x4(&cubeModel)));
+	//XMStoreFloat4x4(&m_constantBufferData.model,XMMatrixTranspose(XMLoadFloat4x4(&cubeModel)));
+	XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
 	context->UpdateSubresource1(
 		m_constantBuffer.Get(),
 		0,
@@ -299,7 +341,7 @@ void Sample3DSceneRenderer::Render()
 
 	// Attach our vertex shader.
 	context->VSSetShader(
-		m_vertexShader.Get(),
+		skyboxVertexShader.Get(),
 		nullptr,
 		0
 	);
@@ -313,9 +355,11 @@ void Sample3DSceneRenderer::Render()
 		nullptr
 	);
 
+	//Add SRVs
+	context->PSSetShaderResources(0, 1, cubelightShaderResourceView.GetAddressOf());
 	// Attach our pixel shader.
 	context->PSSetShader(
-		m_pixelShader.Get(),
+		skyboxPixelShader.Get(),
 		nullptr,
 		0
 	);
@@ -326,6 +370,65 @@ void Sample3DSceneRenderer::Render()
 		0,
 		0
 	);
+#pragma endregion
+
+#pragma region GREENMARBLEDRAW
+	for (unsigned int i = 0; i < greenMarble_loader.materialCount; i++) {
+		//m_constantBufferData.model = greenMarbleModel;
+		XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
+		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+		context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
+		context->UpdateSubresource1(instanceBuffer.Get(), 0, NULL, instanceList.data(), 0, 0, 0);
+
+		unsigned int strides[2];
+		unsigned int offsets[2];
+		ID3D11Buffer* bufferPointers[2];
+		strides[0] = sizeof(VertexUVNormTanBi);
+		strides[1] = sizeof(instancePositionStructure);
+		offsets[0] = 0;
+		offsets[1] = 0;
+		bufferPointers[0] = greenMarble_loader.vertexBuffers[i].Get();
+		bufferPointers[1] = instanceBuffer.Get();
+		//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
+		context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
+		context->IASetIndexBuffer(greenMarble_loader.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
+
+
+		//context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetInputLayout(instanceInputLayout.Get());
+
+		// Attach our vertex shader.
+		context->VSSetShader(
+			instanceVertexShader.Get(),
+			nullptr,
+			0
+		);
+
+		// Send the constant buffer to the graphics device.
+		context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+
+		ID3D11ShaderResourceView* greenMarbleViews[] = { greenMarbleDiffuseSRV.Get(), cubelightShaderResourceView.Get() };
+		context->PSSetShaderResources(0, 2, greenMarbleViews);
+
+		//Set samplers
+		ID3D11SamplerState* greenMarbleSamplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
+		context->PSSetSamplers(0, 2, greenMarbleSamplers);
+
+		// Attach our pixel shader.
+		context->PSSetShader(
+			greenMarble_pixelShader.Get(),
+			nullptr,
+			0
+		);
+
+		//Attach constant buffer
+
+		context->PSSetConstantBuffers(0, 1, lightConstantBuffer.GetAddressOf());
+
+		// Draw the objects.
+		context->DrawIndexedInstanced(greenMarble_loader.modelMaterialFaceVerts[i].size(), activeInstances, 0, 0, 0);
+
+	}
 #pragma endregion
 }
 
@@ -349,19 +452,31 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 #pragma region THREADLOADING
 	//Load textures in threads
+	
+	//Skybox Cubemap
 	std::thread skyboxTextureThread(
 		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
 		L"Assets\\SkyboxOcean.dds",
 		skyboxTexture.GetAddressOf(),
 		skyboxShaderResourceView.GetAddressOf(), 0);
 
+	//CubeLight Cubemap
+	std::thread cubeLightDiffuseThread(
+		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
+		L"Assets\\CubeLight\\Spot Light Cube Map.dds",
+		cubelightTexture.GetAddressOf(),
+		cubelightShaderResourceView.GetAddressOf(), 0);
+
+	//Green Marble Diffuse
+	std::thread greenMarbleDiffuseThread(
+		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
+		L"Assets\\CubeLight\\Green Marble Tiles.dds",
+		(ID3D11Resource**)greenMarbleDiffuseTexture.GetAddressOf(),
+		greenMarbleDiffuseSRV.GetAddressOf(), 0);
+
 #pragma endregion
 
-#pragma region SKYBOXLOADING
-	//Skybox
-	auto loadSkyboxVSTask = DX::ReadDataAsync(L"SkyboxVertexShader.cso");
-	auto loadSkyboxPSTask = DX::ReadDataAsync(L"SkyboxPixelShader.cso");
-
+#pragma region SAMPLERSTATES
 	D3D11_SAMPLER_DESC linearSamplerDesc;
 	linearSamplerDesc.Filter = D3D11_FILTER::D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 	linearSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -378,6 +493,31 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	linearSamplerDesc.BorderColor[3] = 1.0f;
 
 	m_deviceResources->GetD3DDevice()->CreateSamplerState(&linearSamplerDesc, linearSamplerState.GetAddressOf());
+
+	D3D11_SAMPLER_DESC anisotropicSamplerDesc;
+	anisotropicSamplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	anisotropicSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	anisotropicSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	anisotropicSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	anisotropicSamplerDesc.MipLODBias = 0.0f;
+	anisotropicSamplerDesc.MaxAnisotropy = 1;
+	anisotropicSamplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	anisotropicSamplerDesc.BorderColor[0] = 0;
+	anisotropicSamplerDesc.BorderColor[1] = 0;
+	anisotropicSamplerDesc.BorderColor[2] = 0;
+	anisotropicSamplerDesc.BorderColor[3] = 0;
+	anisotropicSamplerDesc.MinLOD = 0;
+	anisotropicSamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	HRESULT anisotropicSamplerCreated = m_deviceResources->GetD3DDevice()->CreateSamplerState(&anisotropicSamplerDesc, &anisotropicSamplerState);
+
+
+#pragma endregion
+
+#pragma region SKYBOXLOADING
+	//Skybox
+	auto loadSkyboxVSTask = DX::ReadDataAsync(L"SkyboxVertexShader.cso");
+	auto loadSkyboxPSTask = DX::ReadDataAsync(L"SkyboxPixelShader.cso");
 
 	// After the vertex shader file is loaded, create the shader and input layout.
 	auto createSkyboxVSTask = loadSkyboxVSTask.then([this](const std::vector<byte>& fileData) {
@@ -625,8 +765,97 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	//XMStoreFloat4x4(&cubeModel, XMMatrixTranslation(0.0f,-1.0f, 0.0f));
 #pragma endregion
 
+#pragma region INSTANCEVERTSHADER
+	auto loadInstanceVSTask = DX::ReadDataAsync(L"InstanceVertexShader.cso");
+
+	// After the vertex shader file is loaded, create the shader and input layout.
+	auto createPlainVSTask = loadInstanceVSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateVertexShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				&instanceVertexShader
+			)
+		);
+		
+		static const D3D11_INPUT_ELEMENT_DESC instanceVertexDesc[] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT , D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT , D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT ,D3D11_INPUT_PER_VERTEX_DATA,0 },
+			{ "TANGENT",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA,0 },
+			{ "BINORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA,0 },
+			{ "TEXCOORD",1,DXGI_FORMAT_R32G32B32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+		};
+		
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateInputLayout(
+				instanceVertexDesc,
+				ARRAYSIZE(instanceVertexDesc),
+				&fileData[0],
+				fileData.size(),
+				&instanceInputLayout
+			)
+		);
+	});
+#pragma endregion
+
+#pragma region GREENMARBLE
+	bool groundMarbleLoaded = greenMarble_loader.loadMaterialOBJ(m_deviceResources, "Assets\\CubeLight\\groundQuad.obj");
+
+	if (groundMarbleLoaded) {
+		// Load shaders asynchronously.
+		auto loadGreenMarblePSTask = DX::ReadDataAsync(L"GreenMarblePixelShader.cso");
+
+		// After the pixel shader file is loaded, create the shader and constant buffer.
+		auto createGrenMarblePSTask = loadGreenMarblePSTask.then([this](const std::vector<byte>& fileData) {
+			DX::ThrowIfFailed(
+				m_deviceResources->GetD3DDevice()->CreatePixelShader(
+					&fileData[0],
+					fileData.size(),
+					nullptr,
+					&greenMarble_pixelShader
+				)
+			);
+		});
+
+		CD3D11_BUFFER_DESC light2ConstantBufferDesc(sizeof(Lighting), D3D11_BIND_CONSTANT_BUFFER);
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateBuffer(
+				&light2ConstantBufferDesc,
+				nullptr,
+				&lightConstantBuffer
+			)
+		);
+	}
+#pragma endregion
+
+#pragma region INSTANCES
+	instanceCount = 900;
+	instanceList.resize(instanceCount);
+
+	D3D11_BUFFER_DESC instanceBufferDesc;
+	ZeroMemory(&instanceBufferDesc, sizeof(instanceBufferDesc));
+	instanceBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	instanceBufferDesc.ByteWidth = sizeof(instancePositionStructure)*instanceCount;
+	instanceBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	instanceBufferDesc.CPUAccessFlags = 0;
+	instanceBufferDesc.MiscFlags = 0;
+	instanceBufferDesc.StructureByteStride = 0;
+
+	D3D11_SUBRESOURCE_DATA instanceData = { 0 };
+	instanceData.pSysMem = instanceList.data();
+	instanceData.SysMemPitch = 0;
+	instanceData.SysMemSlicePitch = 0;
+
+	m_deviceResources->GetD3DDevice()->CreateBuffer(&instanceBufferDesc, &instanceData, instanceBuffer.GetAddressOf());
+#pragma endregion
+
 #pragma region THREADJOINING
 	skyboxTextureThread.join();
+	cubeLightDiffuseThread.join();
+	greenMarbleDiffuseThread.join();
 #pragma endregion
 
 	// Once the cube is loaded, the object is ready to be rendered.
@@ -637,6 +866,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 {
+	//Base program cleanup
 	m_loadingComplete = false;
 	m_vertexShader.Reset();
 	m_inputLayout.Reset();
@@ -645,8 +875,12 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	m_vertexBuffer.Reset();
 	m_indexBuffer.Reset();
 
+	//States cleanup
 	m_rasterizerState.Reset();
+	linearSamplerState.Reset();
+	anisotropicSamplerState.Reset();
 
+	//Skybox cleanup
 	skyboxTexture.Reset();
 	skyboxShaderResourceView.Reset();
 	skyboxInputLayout.Reset();
@@ -655,5 +889,20 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	skyboxVertexBuffer.Reset();
 	skyboxIndexBuffer.Reset();
 
-	linearSamplerState.Reset();
+	//CubeLight
+	cubelightTexture.Reset();
+	cubelightShaderResourceView.Reset();
+
+	//Green Marble
+	greenMarble_loader.~ModelLoader();
+	greenMarble_pixelShader.Reset();
+
+	//Lighting cleanup
+	lightConstantBuffer.Reset();
+
+	//Instancing cleanup
+	instanceBuffer.Reset();
+	instanceList.clear();
+	instanceInputLayout.Reset();
+	instanceVertexShader.Reset();
 }

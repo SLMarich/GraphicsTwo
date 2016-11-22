@@ -62,6 +62,9 @@
     <Image Include="Assets\Wide310x150Logo.scale-200.png">
       <Filter>Assets</Filter>
     </Image>
+    <Filter Include="Assets\CubeLight">
+      <UniqueIdentifier>{fd0b82a8-4cc9-454b-bff8-05d5a2c2be14}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
@@ -89,6 +92,9 @@
     <Image Include="Assets\StoreLogo.png">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="Assets\CubeLight\Spot Light Cube Map.dds">
+      <Filter>Assets\CubeLight</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -101,12 +107,24 @@
     <None Include="Assets\SunsetSkybox.dds">
       <Filter>Assets</Filter>
     </None>
+    <None Include="Assets\CubeLight\groundQuad.obj">
+      <Filter>Assets\CubeLight</Filter>
+    </None>
+    <None Include="Assets\CubeLight\Green Marble Tiles.dds">
+      <Filter>Assets\CubeLight</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="SkyboxVertexShader.hlsl">
       <Filter>Content</Filter>
     </FxCompile>
     <FxCompile Include="SkyboxPixelShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="InstanceVertexShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="GreenMarblePixelShader.hlsl">
       <Filter>Content</Filter>
     </FxCompile>
   </ItemGroup>

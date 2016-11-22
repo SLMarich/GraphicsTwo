@@ -4,6 +4,8 @@
 #include "ShaderStructures.h"
 #include "..\Common\StepTimer.h"
 
+#include "ModelLoader.h"
+
 namespace GraphicsTwoProject
 {
 	// This sample renderer instantiates a basic rendering pipeline.
@@ -30,6 +32,8 @@ namespace GraphicsTwoProject
 		std::shared_ptr<DX::DeviceResources> m_deviceResources;
 		//Additional Model Resources
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_rasterizerState;
+		Microsoft::WRL::ComPtr<ID3D11SamplerState>	linearSamplerState;
+		Microsoft::WRL::ComPtr<ID3D11SamplerState>	anisotropicSamplerState;
 
 		//Skybox
 		Microsoft::WRL::ComPtr<ID3D11Resource>		skyboxTexture;
@@ -39,7 +43,6 @@ namespace GraphicsTwoProject
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	skyboxPixelShader;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		skyboxVertexBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		skyboxIndexBuffer;
-		Microsoft::WRL::ComPtr<ID3D11SamplerState>	linearSamplerState;
 		uint32	skyboxIndexCount;
 		DirectX::XMFLOAT4X4	skyboxModel;
 		// Direct3D resources for cube geometry.
@@ -61,6 +64,31 @@ namespace GraphicsTwoProject
 		bool	m_tracking;
 
 		DirectX::XMFLOAT4X4 world, camera, projection;// , camera1, projection1;
+
+
+		//CubeLight
+		Microsoft::WRL::ComPtr<ID3D11Resource>		cubelightTexture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	cubelightShaderResourceView;
+		DirectX::XMFLOAT4X4							cubelightModel;
+
+		//Green Marble
+		ModelLoader greenMarble_loader;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>	greenMarble_pixelShader;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>		greenMarbleDiffuseTexture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	greenMarbleDiffuseSRV;
+		DirectX::XMFLOAT4X4 greenMarbleModel;
+
+		//Lighting
+		Lighting sampleLight;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>	lightConstantBuffer;
+
+		//Instancing
+		Microsoft::WRL::ComPtr<ID3D11Buffer>	instanceBuffer;
+		unsigned int activeInstances;
+		unsigned int instanceCount;
+		std::vector<instancePositionStructure> instanceList;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader>	instanceVertexShader;
+		Microsoft::WRL::ComPtr<ID3D11InputLayout>	instanceInputLayout;
 	};
 }
 

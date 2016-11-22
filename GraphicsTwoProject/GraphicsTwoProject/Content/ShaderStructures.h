@@ -26,4 +26,25 @@ namespace GraphicsTwoProject
 		DirectX::XMFLOAT3 tangent;
 		DirectX::XMFLOAT3 binormal;
 	};
+
+	//Send per pixel data for lighting to pixel shader
+	struct Lighting {
+		DirectX::XMFLOAT4	pointLightColor;
+		DirectX::XMFLOAT4	pointLightPosition;
+		DirectX::XMFLOAT4	ambientTerm;
+		DirectX::XMFLOAT4	cameraPosition;
+
+		DirectX::XMFLOAT4	spotlightColor;
+		DirectX::XMFLOAT3	spotlightDirection;
+		float				spotlightConeRatio;
+		DirectX::XMFLOAT3	spotlightPosition;
+		float				lightRange;
+
+		DirectX::XMFLOAT4X4	pointRotationMatrix;
+
+	};
+
+	struct instancePositionStructure {
+		DirectX::XMFLOAT3 position;
+	};
 }
