@@ -36,12 +36,14 @@ struct GroundPixelShaderInput
 // A pass-through function for the (interpolated) color data.
 float4 main(GroundPixelShaderInput input) : SV_TARGET
 {
-	float4 specularIntensity;
+float4 specularIntensity;
 float3 reflection;
 float4 specular;
-float4 specularDirection = normalize(cameraPosition - input.worldPos);
-float specularPower = 16.0f;
-float3 directionalLightDirection = float3(spotlightPosition.x*0.5f, -0.5f, spotlightPosition.z*0.5f);
+float4 specularColor;
+float4 specularDirection = -normalize(cameraPosition - input.worldPos);
+float specularPower = 32.0f;
+//float3 directionalLightDirection = float3(spotlightPosition.x*0.5f, -0.5f, spotlightPosition.z*0.5f);
+float3 directionalLightDirection = float3(spotlightPosition.x*0.5f, 0.5f, spotlightPosition.z*0.5f);
 
 float4 textureColor = diffuseTexture.Sample(sampleFilter, input.uv);
 
@@ -84,23 +86,27 @@ float pointLightIntensity = dot(pointLightDirection, -input.norm);
 pointLightIntensity = saturate(pointLightIntensity);
 //Get point light result based on the color, attenuation, and intensity
 //if (pointLightIntensity > 0.0f) {
-//	//Sample pixel from specular map
-//	//specularIntensity = specularTexture.Sample(oakFilter, input.uv);
-//	specularIntensity = 16.0f;
-//	//Calculate the reflection vector based on the light intensity, normal vector, and light direction
-//	reflection = normalize(2 * specularIntensity*input.norm/*bumpNormal*/ - pointLightDirection);
+//	//Determine the final diffue color based on the diffuse color and the amount of light intensity
+//	specularColor = ambientTerm;
+//	//Saturate the ambient and diffuse color
+//	specularColor = saturate(specularColor);
+//	//Calculate the reflection vector based on the light intesnity, normal vector, and light direction
+	reflection = normalize(2 * pointLightIntensity*(-input.norm)/*bumpNormal*/ - pointLightDirection);
 //	//Determine the amount of specular light based on the reflection vector, viewing direction, and specular power
-//	specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
+	specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
 //	//Use the specular map to determine the intensity of a specular light at this pixel
-//	specular = specular*specularIntensity;
-//	//Add the specular component last to the output color
 //}
+//	specularColor = specularColor*textureColor;
+//	//Add the specular component last to the output color
+//	specular = saturate(specularColor + specular);
 //float4 pointLightResult = pointLightColor*rangeAttenuation*pointLightIntensity + specular;
 //float3 pointLightResult = pointLightColor.xyz*rangeAttenuation*pointLightRatio;
+	float4 newPointLightColor = boxTexture.Sample(linearFilter, pointLightTextureDirection);
+	float4 pointLightResult = newPointLightColor*rangeAttenuation*pointLightIntensity;// +specular;
+	//if (pointLightResult.x >= 0.05f || pointLightResult.y >= 0.05f || pointLightResult.z >= 0.05f) {
+	pointLightResult += specular * newPointLightColor;
+	//}
 
-float4 newPointLightColor = boxTexture.Sample(linearFilter, pointLightTextureDirection);
-
-float4 pointLightResult = newPointLightColor*rangeAttenuation*pointLightIntensity;// +specular;
 
 //Point Specular light caulcation
 //specularDirection = -specularDirection;
@@ -124,13 +130,15 @@ float4 directionalResult = directionalLightRatio * float4(0.5f, 0.5f, 0.3f,1.0f)
 //Sample pixel from specular map
 //specularIntensity = specularTexture.Sample(sampleFilter, input.uv);
 ////Calculate the reflection vector based on the light intensity, normal vector, and light direction
-//reflection = normalize(2.0f * specularIntensity*norm - directionalLightDirection);
-////Determine the amount of specular light based on the reflection vector, viewing direction, and specular power
-//specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
-////Use the specular map to determine the intensity of a specular light at this pixel
-//specular = specular*specularIntensity;
-////Add the specular component last to the output color
-//directionalResult = directionalResult + specular;
+float directionalLightIntensity = dot(directionalLightDirection, -input.norm);
+directionalLightIntensity = saturate(directionalLightIntensity);
+
+//Add specular
+//NOTE: DISABLED SPECULAR DUE TO AMOUNT
+reflection = normalize(2.0f * directionalLightIntensity*(-input.norm) - directionalLightDirection);
+specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
+//Add the specular component last to the output color
+directionalResult = directionalResult + specular;
 
 //Spot Lighting
 //Get the spot light's noramlized direction
@@ -164,9 +172,9 @@ float4 spotlightResult = spotlightRatio * spotlightColor * spotlightAttenuation;
 //float4 sampled = textureColor * saturate(pointLightResult + ambientTerm + specularResult + directionalResult + spotlightResult);
 //Specular now added to each light
 
-float4 sampled = textureColor * saturate(pointLightResult + ambientTerm);
+//float4 sampled = textureColor * saturate(pointLightResult + ambientTerm);
 
-//float4 sampled = textureColor * saturate(pointLightResult + ambientTerm + directionalResult + spotlightResult);
+float4 sampled = textureColor * saturate(pointLightResult + ambientTerm + directionalResult + spotlightResult);
 //sampled.a = clamp(sampled.a - 0.05, 0, 1);
 sampled.r = sampled.r*sampled.a;
 sampled.g = sampled.g*sampled.a;

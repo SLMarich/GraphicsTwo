@@ -45,6 +45,7 @@ namespace GraphicsTwoProject
 	};
 
 	struct instancePositionStructure {
-		DirectX::XMFLOAT3 position;
+		DirectX::XMFLOAT3	position;
+		DirectX::XMFLOAT4X4	rotation;
 	};
 }

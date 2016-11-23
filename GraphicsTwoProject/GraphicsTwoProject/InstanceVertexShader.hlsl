@@ -15,6 +15,7 @@ struct InstanceVertexShaderInput
 	float3 tangent : TANGENT;
 	float3 binormal : BINORMAL;
 	float3 instancePosition : TEXCOORD1;
+	float4x4 instanceRotation : ROTATION;
 };
 
 // Per-pixel color data passed through the pixel shader.
@@ -40,6 +41,8 @@ InstancePixelShaderInput main(InstanceVertexShaderInput input)
 
 	// Transform the vertex position into projected space.
 	pos = mul(pos, model);
+		//Rotate
+	pos = mul(pos, input.instanceRotation);
 	output.worldPos = pos;
 	pos = mul(pos, view);
 	pos = mul(pos, projection);

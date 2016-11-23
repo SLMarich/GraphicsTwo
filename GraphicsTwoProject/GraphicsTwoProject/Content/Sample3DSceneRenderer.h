@@ -81,6 +81,8 @@ namespace GraphicsTwoProject
 		//Lighting
 		Lighting sampleLight;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>	lightConstantBuffer;
+		unsigned int instanceTracer;
+		bool instanceTracerSlower = false;
 
 		//Instancing
 		Microsoft::WRL::ComPtr<ID3D11Buffer>	instanceBuffer;

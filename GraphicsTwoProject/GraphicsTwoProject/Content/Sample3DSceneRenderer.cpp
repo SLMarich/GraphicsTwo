@@ -146,8 +146,12 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 
 #pragma region CUBELIGHTUPDATE
 	XMStoreFloat4x4(&cubelightModel, DirectX::XMMatrixIdentity());
-	XMStoreFloat4x4(&cubelightModel, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
-		XMMatrixTranspose(XMMatrixRotationZ((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	XMStoreFloat4x4(&cubelightModel, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationX((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
+		XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
+			XMMatrixTranspose(XMMatrixRotationZ((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
+	//XMStoreFloat4x4(&cubelightModel, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
+	//	XMMatrixTranspose(XMMatrixRotationZ((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	//XMStoreFloat4x4(&cubelightModel, XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))));
 #pragma endregion
 
 #pragma region GREENMARBLEUPDATE
@@ -159,7 +163,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	sampleLight.cameraPosition.y = camera._42;
 	sampleLight.cameraPosition.z = camera._43;
 	sampleLight.cameraPosition.w = camera._44;
-	sampleLight.ambientTerm = DirectX::XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
+	sampleLight.ambientTerm = DirectX::XMFLOAT4(0.05f, 0.05f, 0.05f, 1.0f);
 	sampleLight.lightRange = 25.0f;
 
 	sampleLight.pointLightColor = DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -167,12 +171,25 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 
 	sampleLight.spotlightColor = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
 	sampleLight.spotlightConeRatio = 5.0f;
-	sampleLight.spotlightDirection = DirectX::XMFLOAT3(0.0f, 2.0f, 0.0f);
 	//Move spotlight around
-	sampleLight.spotlightPosition = DirectX::XMFLOAT3(cubelightModel._14, cubelightModel._24, cubelightModel._34);
+	if (!instanceTracerSlower)
+		instanceTracer++;
+	instanceTracerSlower = !instanceTracerSlower;
+	if (instanceTracer >= activeInstances) {
+		instanceTracer = 0;
+	}
 
-	XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
-		XMMatrixTranspose(XMMatrixRotationZ((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	XMFLOAT4X4 spotlightPosition;
+	XMFLOAT4X4 spotlightDirection;
+	XMStoreFloat4x4(&spotlightPosition, XMMatrixMultiply(XMMatrixTranslation(15.0f, 0.0f, 15.0f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	XMStoreFloat4x4(&spotlightDirection, XMMatrixMultiply(XMMatrixTranslation(0.5f, -1.0f, 0.5f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	//sampleLight.spotlightPosition = DirectX::XMFLOAT3(instanceList[instanceTracer].position.x, 0.0f, instanceList[instanceTracer].position.z);
+	sampleLight.spotlightPosition = DirectX::XMFLOAT3(spotlightPosition._41, spotlightPosition._42, spotlightPosition._43);
+	sampleLight.spotlightDirection = DirectX::XMFLOAT3(-spotlightDirection._41, -spotlightDirection._42, -spotlightDirection._43);
+
+	//XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
+	//	XMMatrixTranspose(XMMatrixRotationZ((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMLoadFloat4x4(&cubelightModel));
 
 	XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMMatrixInverse(&XMMatrixDeterminant(XMLoadFloat4x4(&sampleLight.pointRotationMatrix)), XMLoadFloat4x4(&sampleLight.pointRotationMatrix)));
 #pragma endregion
@@ -181,7 +198,11 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	activeInstances = 900;
 	for (unsigned int i = 0; i < 30; i++) {
 		for (unsigned int j = 0; j < 30; j++) {
-			instanceList[i * 30 + j].position = DirectX::XMFLOAT3((float)(i+i+i)-30.0f, -2.0f, (float)(j+j+j)-30.0f);
+			instanceList[i * 30 + j].position = DirectX::XMFLOAT3((float)(i+i)-30.0f, -2.0f, (float)(j+j)-30.0f);
+			XMMATRIX groundRotation = XMMatrixMultiply(XMMatrixTranslation(instanceList[i * 30 + j].position.x, instanceList[i * 30 + j].position.y, instanceList[i * 30 + j].position.z), XMLoadFloat4x4(&cubelightModel));
+			XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixIdentity());
+			//XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixTranspose(groundRotation));
+			//instanceList[i * 30 + j].position = XMFLOAT3(groundRotation.r[3].m128_f32[0], groundRotation.r[3].m128_f32[1], groundRotation.r[3].m128_f32[2]);
 		}
 	}
 #pragma endregion
@@ -439,6 +460,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	D3D11_RASTERIZER_DESC rasterizerDesc;
 	rasterizerDesc.FillMode = D3D11_FILL_MODE::D3D11_FILL_SOLID;
 	rasterizerDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_BACK;
+	//rasterizerDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_NONE;
 	rasterizerDesc.FrontCounterClockwise = TRUE;
 	rasterizerDesc.DepthBias = 0;
 	rasterizerDesc.SlopeScaledDepthBias = 0.0f;
@@ -787,6 +809,10 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 			{ "TANGENT",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA,0 },
 			{ "BINORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA,0 },
 			{ "TEXCOORD",1,DXGI_FORMAT_R32G32B32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+			{ "ROTATION",0,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+			{ "ROTATION",1,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+			{ "ROTATION",2,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+			{ "ROTATION",3,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
 		};
 		
 		DX::ThrowIfFailed(
