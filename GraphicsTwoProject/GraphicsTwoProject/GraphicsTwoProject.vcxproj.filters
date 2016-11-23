@@ -65,6 +65,9 @@
     <Filter Include="Assets\CubeLight">
       <UniqueIdentifier>{fd0b82a8-4cc9-454b-bff8-05d5a2c2be14}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Assets\Pillar">
+      <UniqueIdentifier>{38cbc35f-4491-4517-9f7f-e33709cb1cac}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
@@ -95,6 +98,9 @@
     <Image Include="Assets\CubeLight\Spot Light Cube Map.dds">
       <Filter>Assets\CubeLight</Filter>
     </Image>
+    <Image Include="Assets\Pillar\SeemlessMarble1.dds">
+      <Filter>Assets\Pillar</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -112,6 +118,9 @@
     </None>
     <None Include="Assets\CubeLight\Green Marble Tiles.dds">
       <Filter>Assets\CubeLight</Filter>
+    </None>
+    <None Include="Assets\Pillar\pillarType1.obj">
+      <Filter>Assets\Pillar</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

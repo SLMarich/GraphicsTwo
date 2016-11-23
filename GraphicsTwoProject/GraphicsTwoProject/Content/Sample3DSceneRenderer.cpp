@@ -205,6 +205,19 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 			//instanceList[i * 30 + j].position = XMFLOAT3(groundRotation.r[3].m128_f32[0], groundRotation.r[3].m128_f32[1], groundRotation.r[3].m128_f32[2]);
 		}
 	}
+	instanceList[15*30+15] = instanceList[15*30+15+1];
+
+	activePillarType1Instances = 450;
+	for (unsigned int i = 0; i < 15; i++) {
+		for (unsigned int j = 0; j < 15; j++) {
+			pillarType1InstanceList[i*15+j] = instanceList[i*60+j*2];
+			pillarType1InstanceList[i * 15 + j].position = DirectX::XMFLOAT3(pillarType1InstanceList[i * 15 + j].position.x+0.5f, pillarType1InstanceList[i * 15 + j].position.y, pillarType1InstanceList[i * 15 + j].position.z + 0.5f);
+		}
+	}
+	//pillarType1InstanceList[0].position = DirectX::XMFLOAT3(-5.0f, 0.0f, -5.0f);
+	//pillarType1InstanceList[1].position = DirectX::XMFLOAT3(5.0f, 0.0f, -5.0f);
+	//pillarType1InstanceList[2].position = DirectX::XMFLOAT3(-5.0f, 0.0f, 5.0f);
+	//pillarType1InstanceList[3].position = DirectX::XMFLOAT3(5.0f, 0.0f, 5.0f);
 #pragma endregion
 }
 
@@ -451,6 +464,66 @@ void Sample3DSceneRenderer::Render()
 
 	}
 #pragma endregion
+
+#pragma region PILLARTYPE1DRAW
+	for (unsigned int i = 0; i < pillarType1_loader.materialCount; i++) {
+		//m_constantBufferData.model = greenMarbleModel;
+		//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
+		XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixIdentity());
+		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+		context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
+		context->UpdateSubresource1(instanceBuffer.Get(), 0, NULL, pillarType1InstanceList.data(), 0, 0, 0);
+
+		unsigned int strides[2];
+		unsigned int offsets[2];
+		ID3D11Buffer* bufferPointers[2];
+		strides[0] = sizeof(VertexUVNormTanBi);
+		strides[1] = sizeof(instancePositionStructure);
+		offsets[0] = 0;
+		offsets[1] = 0;
+		bufferPointers[0] = pillarType1_loader.vertexBuffers[i].Get();
+		bufferPointers[1] = instanceBuffer.Get();
+		//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
+		context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
+		context->IASetIndexBuffer(pillarType1_loader.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
+
+
+		//context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetInputLayout(instanceInputLayout.Get());
+
+		// Attach our vertex shader.
+		context->VSSetShader(
+			instanceVertexShader.Get(),
+			nullptr,
+			0
+		);
+
+		// Send the constant buffer to the graphics device.
+		context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+
+		ID3D11ShaderResourceView* pillarType1Views[] = { pillarType1DiffuseSRV.Get(), cubelightShaderResourceView.Get() };
+		context->PSSetShaderResources(0, 2, pillarType1Views);
+
+		//Set samplers
+		ID3D11SamplerState* pillarType1Samplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
+		context->PSSetSamplers(0, 2, pillarType1Samplers);
+
+		// Attach our pixel shader.
+		context->PSSetShader(
+			greenMarble_pixelShader.Get(),
+			nullptr,
+			0
+		);
+
+		//Attach constant buffer
+
+		context->PSSetConstantBuffers(0, 1, lightConstantBuffer.GetAddressOf());
+
+		// Draw the objects.
+		context->DrawIndexedInstanced(pillarType1_loader.modelMaterialFaceVerts[i].size(), activePillarType1Instances, 0, 0, 0);
+	}
+#pragma endregion
+
 }
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources()
@@ -495,6 +568,13 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		L"Assets\\CubeLight\\Green Marble Tiles.dds",
 		(ID3D11Resource**)greenMarbleDiffuseTexture.GetAddressOf(),
 		greenMarbleDiffuseSRV.GetAddressOf(), 0);
+
+	//PillarType1
+	std::thread pillarType1DiffuseThread(
+		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
+		L"Assets\\Pillar\\SeemlessMarble1.dds",
+		(ID3D11Resource**)pillarType1DiffuseTexture.GetAddressOf(),
+		pillarType1DiffuseSRV.GetAddressOf(), 0);
 
 #pragma endregion
 
@@ -861,6 +941,8 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	instanceCount = 900;
 	instanceList.resize(instanceCount);
 
+	pillarType1InstanceList.resize(instanceCount);
+
 	D3D11_BUFFER_DESC instanceBufferDesc;
 	ZeroMemory(&instanceBufferDesc, sizeof(instanceBufferDesc));
 	instanceBufferDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -878,10 +960,41 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	m_deviceResources->GetD3DDevice()->CreateBuffer(&instanceBufferDesc, &instanceData, instanceBuffer.GetAddressOf());
 #pragma endregion
 
+#pragma region PILLARTYPE1
+	bool pillarType1Loaded = pillarType1_loader.loadMaterialOBJ(m_deviceResources, "Assets\\Pillar\\pillarType1.obj");
+
+	if (pillarType1Loaded) {
+		// Load shaders asynchronously.
+		//auto loadPillerType1PSTask = DX::ReadDataAsync(L"PillarType1PixelShader.cso");
+
+		// After the pixel shader file is loaded, create the shader and constant buffer.
+		//auto createGrenMarblePSTask = loadGreenMarblePSTask.then([this](const std::vector<byte>& fileData) {
+		//	DX::ThrowIfFailed(
+		//		m_deviceResources->GetD3DDevice()->CreatePixelShader(
+		//			&fileData[0],
+		//			fileData.size(),
+		//			nullptr,
+		//			&greenMarble_pixelShader
+		//		)
+		//	);
+		//});
+
+		//CD3D11_BUFFER_DESC light2ConstantBufferDesc(sizeof(Lighting), D3D11_BIND_CONSTANT_BUFFER);
+		//DX::ThrowIfFailed(
+		//	m_deviceResources->GetD3DDevice()->CreateBuffer(
+		//		&light2ConstantBufferDesc,
+		//		nullptr,
+		//		&lightConstantBuffer
+		//	)
+		//);
+	}
+#pragma endregion
+
 #pragma region THREADJOINING
 	skyboxTextureThread.join();
 	cubeLightDiffuseThread.join();
 	greenMarbleDiffuseThread.join();
+	pillarType1DiffuseThread.join();
 #pragma endregion
 
 	// Once the cube is loaded, the object is ready to be rendered.
@@ -931,4 +1044,9 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	instanceList.clear();
 	instanceInputLayout.Reset();
 	instanceVertexShader.Reset();
+
+	//Pillar type 1
+	pillarType1DiffuseSRV.Reset();
+	pillarType1DiffuseTexture.Reset();
+	pillarType1InstanceList.clear();
 }

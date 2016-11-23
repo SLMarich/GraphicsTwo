@@ -91,6 +91,14 @@ namespace GraphicsTwoProject
 		std::vector<instancePositionStructure> instanceList;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>	instanceVertexShader;
 		Microsoft::WRL::ComPtr<ID3D11InputLayout>	instanceInputLayout;
+
+		//pillarType1
+		ModelLoader pillarType1_loader;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>	pillarType1DiffuseTexture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	pillarType1DiffuseSRV;
+		DirectX::XMFLOAT4X4 pillarType1Modle;
+		unsigned int activePillarType1Instances;
+		std::vector<instancePositionStructure> pillarType1InstanceList;
 	};
 }
 

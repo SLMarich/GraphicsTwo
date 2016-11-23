@@ -272,20 +272,20 @@ void ModelLoader::calculateModelVectors()
 			//Calculate the tangent and binormal of that face
 			calculateTangentBinormal(&vertex1, &vertex2, &vertex3);
 			//Calculate the new normal using the tangent and binormal
-			calculateNormal(&vertex1);
+			//calculateNormal(&vertex1);
 
 			//Store the normal, tangent, and binormal for this face back in the model
-			modelMaterialFaceVerts[j][index - 1].norm = vertex1.norm;
-			modelMaterialFaceVerts[j][index - 1].tangent = vertex1.tangent;
-			modelMaterialFaceVerts[j][index - 1].binormal = vertex1.binormal;
-
-			modelMaterialFaceVerts[j][index - 2].norm = vertex1.norm;
-			modelMaterialFaceVerts[j][index - 2].tangent = vertex1.tangent;
-			modelMaterialFaceVerts[j][index - 2].binormal = vertex1.binormal;
-
-			modelMaterialFaceVerts[j][index - 3].norm = vertex1.norm;
-			modelMaterialFaceVerts[j][index - 3].tangent = vertex1.tangent;
-			modelMaterialFaceVerts[j][index - 3].binormal = vertex1.binormal;
+			//modelMaterialFaceVerts[j][index - 1].norm = vertex1.norm;
+			//modelMaterialFaceVerts[j][index - 1].tangent = vertex1.tangent;
+			//modelMaterialFaceVerts[j][index - 1].binormal = vertex1.binormal;
+			//
+			//modelMaterialFaceVerts[j][index - 2].norm = vertex1.norm;
+			//modelMaterialFaceVerts[j][index - 2].tangent = vertex1.tangent;
+			//modelMaterialFaceVerts[j][index - 2].binormal = vertex1.binormal;
+			//
+			//modelMaterialFaceVerts[j][index - 3].norm = vertex1.norm;
+			//modelMaterialFaceVerts[j][index - 3].tangent = vertex1.tangent;
+			//modelMaterialFaceVerts[j][index - 3].binormal = vertex1.binormal;
 		}
 	}
 	return;
