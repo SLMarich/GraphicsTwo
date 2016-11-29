@@ -32,6 +32,7 @@ namespace GraphicsTwoProject
 		std::shared_ptr<DX::DeviceResources> m_deviceResources;
 		//Additional Model Resources
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_rasterizerState;
+		Microsoft::WRL::ComPtr<ID3D11RasterizerState> wireframeRasterState;
 		Microsoft::WRL::ComPtr<ID3D11SamplerState>	linearSamplerState;
 		Microsoft::WRL::ComPtr<ID3D11SamplerState>	anisotropicSamplerState;
 
@@ -65,6 +66,11 @@ namespace GraphicsTwoProject
 
 		DirectX::XMFLOAT4X4 world, camera, projection;// , camera1, projection1;
 
+		//Sceen adjusting bools
+		bool toggledChecker = false;
+		bool groundMove = false;
+		bool geoShaderEnabled = false;
+		bool wireframeEnabled = false;
 
 		//CubeLight
 		Microsoft::WRL::ComPtr<ID3D11Resource>		cubelightTexture;
@@ -99,6 +105,10 @@ namespace GraphicsTwoProject
 		DirectX::XMFLOAT4X4 pillarType1Modle;
 		unsigned int activePillarType1Instances;
 		std::vector<instancePositionStructure> pillarType1InstanceList;
+
+		//Geometry Shaders
+		Microsoft::WRL::ComPtr<ID3D11HullShader>	sampleHullShader;
+		Microsoft::WRL::ComPtr<ID3D11DomainShader>	sampleDomainShader;
 	};
 }
 

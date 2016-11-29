@@ -120,6 +120,14 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	if (buttons[' ']) {
 		newCam = XMMatrixMultiply(newCam, XMMatrixTranslation(0.0f, 5.0f*(float)timer.GetElapsedSeconds(), 0.0f));
 	}
+	if (buttons['1'] && !groundMove && !toggledChecker) {
+		groundMove = true;
+		toggledChecker = true;
+	}
+	else if (buttons['1'] && groundMove && !toggledChecker) {
+		groundMove = false;
+		toggledChecker = true;
+	}
 	
 	
 	if (mouse_move)
@@ -169,7 +177,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	sampleLight.pointLightColor = DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
 	sampleLight.pointLightPosition = DirectX::XMFLOAT4(cubelightModel._14, cubelightModel._24, cubelightModel._34, cubelightModel._44);
 
-	sampleLight.spotlightColor = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+	sampleLight.spotlightColor = DirectX::XMFLOAT4(0.0f, 0.5f, 0.0f, 1.0f);
 	sampleLight.spotlightConeRatio = 5.0f;
 	//Move spotlight around
 	if (!instanceTracerSlower)
@@ -181,8 +189,10 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 
 	XMFLOAT4X4 spotlightPosition;
 	XMFLOAT4X4 spotlightDirection;
-	XMStoreFloat4x4(&spotlightPosition, XMMatrixMultiply(XMMatrixTranslation(15.0f, 0.0f, 15.0f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
-	XMStoreFloat4x4(&spotlightDirection, XMMatrixMultiply(XMMatrixTranslation(0.5f, -1.0f, 0.5f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	//XMStoreFloat4x4(&spotlightPosition, XMMatrixMultiply(XMMatrixTranslation(15.0f, 0.0f, 15.0f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	//XMStoreFloat4x4(&spotlightDirection, XMMatrixMultiply(XMMatrixTranslation(0.5f, -1.0f, 0.5f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	XMStoreFloat4x4(&spotlightPosition, XMMatrixMultiply(XMMatrixTranslation(15.0f, 0.0f, 15.0f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	XMStoreFloat4x4(&spotlightDirection, XMMatrixMultiply(XMMatrixTranslation(0.5f, -1.0f, 0.5f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
 	//sampleLight.spotlightPosition = DirectX::XMFLOAT3(instanceList[instanceTracer].position.x, 0.0f, instanceList[instanceTracer].position.z);
 	sampleLight.spotlightPosition = DirectX::XMFLOAT3(spotlightPosition._41, spotlightPosition._42, spotlightPosition._43);
 	sampleLight.spotlightDirection = DirectX::XMFLOAT3(-spotlightDirection._41, -spotlightDirection._42, -spotlightDirection._43);
@@ -198,11 +208,13 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	activeInstances = 900;
 	for (unsigned int i = 0; i < 30; i++) {
 		for (unsigned int j = 0; j < 30; j++) {
-			instanceList[i * 30 + j].position = DirectX::XMFLOAT3((float)(i+i)-30.0f, -2.0f, (float)(j+j)-30.0f);
+			instanceList[i * 30 + j].position = DirectX::XMFLOAT3((float)(i + i) - 30.0f, -2.0f, (float)(j + j) - 30.0f);
 			XMMATRIX groundRotation = XMMatrixMultiply(XMMatrixTranslation(instanceList[i * 30 + j].position.x, instanceList[i * 30 + j].position.y, instanceList[i * 30 + j].position.z), XMLoadFloat4x4(&cubelightModel));
 			XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixIdentity());
-			//XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixTranspose(groundRotation));
-			//instanceList[i * 30 + j].position = XMFLOAT3(groundRotation.r[3].m128_f32[0], groundRotation.r[3].m128_f32[1], groundRotation.r[3].m128_f32[2]);
+			if (groundMove){
+				XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixTranspose(groundRotation));
+				instanceList[i * 30 + j].position = XMFLOAT3(groundRotation.r[3].m128_f32[0], groundRotation.r[3].m128_f32[1], groundRotation.r[3].m128_f32[2]);
+			}
 		}
 	}
 	instanceList[15*30+15] = instanceList[15*30+15+1];
@@ -219,6 +231,31 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	//pillarType1InstanceList[2].position = DirectX::XMFLOAT3(-5.0f, 0.0f, 5.0f);
 	//pillarType1InstanceList[3].position = DirectX::XMFLOAT3(5.0f, 0.0f, 5.0f);
 #pragma endregion
+
+#pragma region GEOMETRYSHADERUPDATES
+	if (buttons['2'] && !geoShaderEnabled && !toggledChecker) {
+		geoShaderEnabled = true;
+		toggledChecker = true;
+	}
+	else if (buttons['2'] && geoShaderEnabled && !toggledChecker) {
+		geoShaderEnabled = false;
+		toggledChecker = true;
+	}
+
+#pragma endregion
+
+	if (buttons['4'] && !wireframeEnabled) {
+		wireframeEnabled = true;
+		toggledChecker = true;
+	}
+	else if (buttons['5'] && wireframeEnabled) {
+		wireframeEnabled = false;
+		toggledChecker = true;
+	}
+
+	if (!buttons['1'] && !buttons['2'] && !buttons['4'] && !buttons['5']) {
+		toggledChecker = false;
+	}
 }
 
 // Rotate the 3D cube model a set amount of radians.
@@ -253,7 +290,10 @@ void Sample3DSceneRenderer::Render()
 {
 #pragma region STATESETUP
 	//Set rasterizer state
-	m_deviceResources->GetD3DDeviceContext()->RSSetState(m_rasterizerState.Get());
+	if (!wireframeEnabled)
+		m_deviceResources->GetD3DDeviceContext()->RSSetState(m_rasterizerState.Get());
+	else
+		m_deviceResources->GetD3DDeviceContext()->RSSetState(wireframeRasterState.Get());
 #pragma endregion
 
 	auto context = m_deviceResources->GetD3DDeviceContext();
@@ -339,71 +379,155 @@ void Sample3DSceneRenderer::Render()
 #pragma endregion
 
 #pragma region CUBEDRAW
-	// Prepare the constant buffer to send it to the graphics device.
-	//XMStoreFloat4x4(&m_constantBufferData.model,XMMatrixTranspose(XMLoadFloat4x4(&cubeModel)));
-	XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
-	context->UpdateSubresource1(
-		m_constantBuffer.Get(),
-		0,
-		NULL,
-		&m_constantBufferData,
-		0,
-		0,
-		0
-	);
+	if (!geoShaderEnabled) {
+		// Prepare the constant buffer to send it to the graphics device.
+		//XMStoreFloat4x4(&m_constantBufferData.model,XMMatrixTranspose(XMLoadFloat4x4(&cubeModel)));
+		XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
+		context->UpdateSubresource1(
+			m_constantBuffer.Get(),
+			0,
+			NULL,
+			&m_constantBufferData,
+			0,
+			0,
+			0
+		);
 
-	// Each vertex is one instance of the VertexPositionColor struct.
-	stride = sizeof(VertexPositionColor);
-	offset = 0;
-	context->IASetVertexBuffers(
-		0,
-		1,
-		m_vertexBuffer.GetAddressOf(),
-		&stride,
-		&offset
-	);
+		// Each vertex is one instance of the VertexPositionColor struct.
+		stride = sizeof(VertexPositionColor);
+		offset = 0;
+		context->IASetVertexBuffers(
+			0,
+			1,
+			m_vertexBuffer.GetAddressOf(),
+			&stride,
+			&offset
+		);
 
-	context->IASetIndexBuffer(
-		m_indexBuffer.Get(),
-		DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
-		0
-	);
+		context->IASetIndexBuffer(
+			m_indexBuffer.Get(),
+			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+			0
+		);
 
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	context->IASetInputLayout(m_inputLayout.Get());
+		context->IASetInputLayout(m_inputLayout.Get());
 
-	// Attach our vertex shader.
-	context->VSSetShader(
-		skyboxVertexShader.Get(),
-		nullptr,
-		0
-	);
+		// Attach our vertex shader.
+		context->VSSetShader(
+			skyboxVertexShader.Get(),
+			nullptr,
+			0
+		);
 
-	// Send the constant buffer to the graphics device.
-	context->VSSetConstantBuffers1(
-		0,
-		1,
-		m_constantBuffer.GetAddressOf(),
-		nullptr,
-		nullptr
-	);
+		// Send the constant buffer to the graphics device.
+		context->VSSetConstantBuffers1(
+			0,
+			1,
+			m_constantBuffer.GetAddressOf(),
+			nullptr,
+			nullptr
+		);
 
-	//Add SRVs
-	context->PSSetShaderResources(0, 1, cubelightShaderResourceView.GetAddressOf());
-	// Attach our pixel shader.
-	context->PSSetShader(
-		skyboxPixelShader.Get(),
-		nullptr,
-		0
-	);
+		//Add SRVs
+		context->PSSetShaderResources(0, 1, cubelightShaderResourceView.GetAddressOf());
+		// Attach our pixel shader.
+		context->PSSetShader(
+			skyboxPixelShader.Get(),
+			nullptr,
+			0
+		);
 
-	// Draw the objects.
-	context->DrawIndexed(
-		m_indexCount,
-		0,
-		0
-	);
+		// Draw the objects.
+		context->DrawIndexed(
+			m_indexCount,
+			0,
+			0
+		);
+	}
+	else {
+		// Prepare the constant buffer to send it to the graphics device.
+		//XMStoreFloat4x4(&m_constantBufferData.model,XMMatrixTranspose(XMLoadFloat4x4(&cubeModel)));
+		XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
+		context->UpdateSubresource1(
+			m_constantBuffer.Get(),
+			0,
+			NULL,
+			&m_constantBufferData,
+			0,
+			0,
+			0
+		);
+
+		// Each vertex is one instance of the VertexPositionColor struct.
+		stride = sizeof(VertexPositionColor);
+		offset = 0;
+		context->IASetVertexBuffers(
+			0,
+			1,
+			m_vertexBuffer.GetAddressOf(),
+			&stride,
+			&offset
+		);
+
+		context->IASetIndexBuffer(
+			m_indexBuffer.Get(),
+			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+			0
+		);
+
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
+
+		context->IASetInputLayout(m_inputLayout.Get());
+
+		// Attach our vertex shader.
+		context->VSSetShader(
+			skyboxVertexShader.Get(),
+			nullptr,
+			0
+		);
+		//Attach Hull and Domain Shaders
+		context->HSSetShader(
+			sampleHullShader.Get(),
+			nullptr,
+			0
+		);
+		context->DSSetShader(
+			sampleDomainShader.Get(),
+			nullptr,
+			0
+		);
+
+		// Send the constant buffer to the graphics device.
+		context->VSSetConstantBuffers1(
+			0,
+			1,
+			m_constantBuffer.GetAddressOf(),
+			nullptr,
+			nullptr
+		);
+
+		//Add SRVs
+		context->PSSetShaderResources(0, 1, cubelightShaderResourceView.GetAddressOf());
+		// Attach our pixel shader.
+		context->PSSetShader(
+			skyboxPixelShader.Get(),
+			nullptr,
+			0
+		);
+
+		// Draw the objects.
+		context->DrawIndexed(
+			m_indexCount,
+			0,
+			0
+		);
+
+		context->HSSetShader(nullptr, nullptr, 0);
+		context->DSSetShader(nullptr, nullptr, 0);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	}
 #pragma endregion
 
 #pragma region GREENMARBLEDRAW
@@ -428,7 +552,7 @@ void Sample3DSceneRenderer::Render()
 		context->IASetIndexBuffer(greenMarble_loader.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
 
 
-		//context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		context->IASetInputLayout(instanceInputLayout.Get());
 
 		// Attach our vertex shader.
@@ -542,7 +666,9 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	rasterizerDesc.ScissorEnable = FALSE;
 	rasterizerDesc.MultisampleEnable = FALSE;
 	rasterizerDesc.AntialiasedLineEnable = FALSE;
-	m_deviceResources->GetD3DDevice()->CreateRasterizerState(&rasterizerDesc, &m_rasterizerState);
+	m_deviceResources->GetD3DDevice()->CreateRasterizerState(&rasterizerDesc, m_rasterizerState.GetAddressOf());
+	rasterizerDesc.FillMode = D3D11_FILL_MODE::D3D11_FILL_WIREFRAME;
+	m_deviceResources->GetD3DDevice()->CreateRasterizerState(&rasterizerDesc, wireframeRasterState.GetAddressOf());
 #pragma endregion
 
 #pragma region THREADLOADING
@@ -740,7 +866,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 #pragma region SAMPLECUBE
 	// Load shaders asynchronously.
-	auto loadVSTask = DX::ReadDataAsync(L"SampleVertexShader.cso");
+	auto loadVSTask = DX::ReadDataAsync(L"SampleHullVertexShader.cso");
 	auto loadPSTask = DX::ReadDataAsync(L"SamplePixelShader.cso");
 
 	// After the vertex shader file is loaded, create the shader and input layout.
@@ -990,6 +1116,36 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	}
 #pragma endregion
 
+#pragma region GEOMETRYSHADER
+	//Skybox
+	auto loadSampleHSTask = DX::ReadDataAsync(L"SampleHullShader.cso");
+	auto loadSampleDSTask = DX::ReadDataAsync(L"SampleDomainShader.cso");
+
+	// After the vertex shader file is loaded, create the shader and input layout.
+	auto createSampleHSTask = loadSampleHSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateHullShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				&sampleHullShader
+			)
+		);
+	});
+	
+	auto createSampleDSTask = loadSampleDSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateDomainShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				&sampleDomainShader
+			)
+		);
+	});
+
+#pragma endregion
+
 #pragma region THREADJOINING
 	skyboxTextureThread.join();
 	cubeLightDiffuseThread.join();
@@ -1016,6 +1172,7 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 
 	//States cleanup
 	m_rasterizerState.Reset();
+	wireframeRasterState.Reset();
 	linearSamplerState.Reset();
 	anisotropicSamplerState.Reset();
 
@@ -1049,4 +1206,8 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	pillarType1DiffuseSRV.Reset();
 	pillarType1DiffuseTexture.Reset();
 	pillarType1InstanceList.clear();
+
+	//Geometry Shader
+	sampleHullShader.Reset();
+	sampleDomainShader.Reset();
 }

@@ -136,5 +136,14 @@
     <FxCompile Include="GreenMarblePixelShader.hlsl">
       <Filter>Content</Filter>
     </FxCompile>
+    <FxCompile Include="SampleHullShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="SampleHullVertexShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="SampleDomainShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

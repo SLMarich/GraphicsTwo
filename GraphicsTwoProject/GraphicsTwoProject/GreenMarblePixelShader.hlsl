@@ -150,8 +150,8 @@ float surfaceRatio = saturate(dot(-spotlightNormDirection, invspotlightDirection
 //Adding normal texture
 float spotlightRatio = saturate(dot(invspotlightDirection, -input.norm));
 //Get inner and outter cones
-float innerCone = cos(2.0f * (3.14515f / 180.0f));
-float outterCone = cos(4.0f * (3.14515f / 180.0f));
+float innerCone = cos(1.0f * (3.14515f / 180.0f));
+float outterCone = cos(24.0f * (3.14515f / 180.0f));
 //Attenuate
 float spotlightAttenuation = 1.0f - saturate((innerCone - surfaceRatio) / (innerCone - outterCone));
 //Get result
@@ -160,13 +160,15 @@ float4 spotlightResult = spotlightRatio * spotlightColor * spotlightAttenuation;
 ////Sample pixel from specular map
 //specularIntensity = specularTexture.Sample(sampleFilter, input.uv);
 ////Calculate the reflection vector based on the light intensity, normal vector, and light direction
-//reflection = normalize(2.0f * specularIntensity*norm - spotlightNormDirection);
+float spotlightIntensity = dot(spotlightDirection, -input.norm);
+spotlightIntensity = saturate(spotlightIntensity);
+reflection = normalize(2.0f * spotlightIntensity*input.norm - spotlightNormDirection);
 ////Determine the amount of specular light based on the reflection vector, viewing direction, and specular power
-//specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
+specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
 ////Use the specular map to determine the intensity of a specular light at this pixel
-//specular = specular*specularIntensity;
+specular = specular*spotlightIntensity;
 ////Add the specular component last to the output color
-//spotlightResult += specular;
+spotlightResult += specular;
 
 //float4 sampled = diffuseTexture.Sample(oakFilter, input.uv) * saturate(pointLightResult + ambientTerm + specularResult + directionalResult + spotlightResult);
 //float4 sampled = textureColor * saturate(pointLightResult + ambientTerm + specularResult + directionalResult + spotlightResult);
