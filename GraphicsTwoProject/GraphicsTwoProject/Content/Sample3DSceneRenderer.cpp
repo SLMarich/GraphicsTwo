@@ -160,10 +160,13 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	//XMStoreFloat4x4(&cubelightModel, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
 	//	XMMatrixTranspose(XMMatrixRotationZ((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
 	//XMStoreFloat4x4(&cubelightModel, XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))));
+	//cubelightModel._24 = cubelightModel._24 - 2.0f;
+
+	//XMStoreFloat4x4(&geoCubeLight.modelMatrix, XMLoadFloat4x4(&cubelightModel));
 #pragma endregion
 
 #pragma region GREENMARBLEUPDATE
-	XMStoreFloat4x4(&greenMarbleModel, XMMatrixIdentity());
+	XMStoreFloat4x4(&greenMarble_loader.modelMatrix, XMMatrixIdentity());
 #pragma endregion
 
 #pragma region LIGHTINGUPDATES
@@ -230,6 +233,16 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	//pillarType1InstanceList[1].position = DirectX::XMFLOAT3(5.0f, 0.0f, -5.0f);
 	//pillarType1InstanceList[2].position = DirectX::XMFLOAT3(-5.0f, 0.0f, 5.0f);
 	//pillarType1InstanceList[3].position = DirectX::XMFLOAT3(5.0f, 0.0f, 5.0f);
+
+	activeGeoCubeInstances = 1;
+	geoCubeLightInstanceList[0].position = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixIdentity());
+	//geoCubeLightInstanceList[1].position = XMFLOAT3(0.0f, 1.0f, 0.0f);
+	//XMStoreFloat4x4(&geoCubeLightInstanceList[1].rotation, XMMatrixIdentity());
+	//geoCubeLightInstanceList[2].position = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)));
+	XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, /*XMMatrixTranspose(*/XMLoadFloat4x4(&cubelightModel));
+	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixIdentity());
 #pragma endregion
 
 #pragma region GEOMETRYSHADERUPDATES
@@ -447,93 +460,94 @@ void Sample3DSceneRenderer::Render()
 		);
 	}
 	else {
-		// Prepare the constant buffer to send it to the graphics device.
-		//XMStoreFloat4x4(&m_constantBufferData.model,XMMatrixTranspose(XMLoadFloat4x4(&cubeModel)));
-		XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
-		context->UpdateSubresource1(
-			m_constantBuffer.Get(),
-			0,
-			NULL,
-			&m_constantBufferData,
-			0,
-			0,
-			0
-		);
+		for (unsigned int i = 0; i < geoCubeLight.materialCount; i++) {
+			XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
+			XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMMatrixIdentity());
+			//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&geoCubeLight.modelMatrix));
+			context->UpdateSubresource1(geoInstanceBuffer.Get(), 0, NULL, geoCubeLightInstanceList.data(), 0, 0, 0);
+			context->UpdateSubresource1(
+				m_constantBuffer.Get(),
+				0,
+				NULL,
+				&m_constantBufferData,
+				0,
+				0,
+				0
+			);
 
-		// Each vertex is one instance of the VertexPositionColor struct.
-		stride = sizeof(VertexPositionColor);
-		offset = 0;
-		context->IASetVertexBuffers(
-			0,
-			1,
-			m_vertexBuffer.GetAddressOf(),
-			&stride,
-			&offset
-		);
+			unsigned int strides[2];
+			unsigned int offsets[2];
+			ID3D11Buffer* bufferPointers[2];
+			strides[0] = sizeof(VertexUVNormTanBi);
+			strides[1] = sizeof(instancePositionStructure);
+			offsets[0] = 0;
+			offsets[1] = 0;
+			bufferPointers[0] = geoCubeLight.vertexBuffers[i].Get();
+			bufferPointers[1] = geoInstanceBuffer.Get();
+			//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
+			context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
+			context->IASetIndexBuffer(geoCubeLight.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
 
-		context->IASetIndexBuffer(
-			m_indexBuffer.Get(),
-			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
-			0
-		);
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
 
-		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
+			context->IASetInputLayout(instanceInputLayout.Get());
 
-		context->IASetInputLayout(m_inputLayout.Get());
+			// Attach our vertex shader.
+			context->VSSetShader(
+				geoVertexShader.Get(),
+				nullptr,
+				0
+			);
+			//Attach Hull and Domain Shaders
+			context->HSSetShader(
+				geoHullShader.Get(),
+				nullptr,
+				0
+			);
+			context->DSSetShader(
+				geoDomainShader.Get(),
+				nullptr,
+				0
+			);
 
-		// Attach our vertex shader.
-		context->VSSetShader(
-			skyboxVertexShader.Get(),
-			nullptr,
-			0
-		);
-		//Attach Hull and Domain Shaders
-		context->HSSetShader(
-			sampleHullShader.Get(),
-			nullptr,
-			0
-		);
-		context->DSSetShader(
-			sampleDomainShader.Get(),
-			nullptr,
-			0
-		);
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBuffer.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
 
-		// Send the constant buffer to the graphics device.
-		context->VSSetConstantBuffers1(
-			0,
-			1,
-			m_constantBuffer.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
+			//Add SRVs
+			context->PSSetShaderResources(0, 1, cubelightShaderResourceView.GetAddressOf());
+			// Attach our pixel shader.
+			context->PSSetShader(
+				geoSkyboxPixelShader.Get(),
+				nullptr,
+				0
+			);
 
-		//Add SRVs
-		context->PSSetShaderResources(0, 1, cubelightShaderResourceView.GetAddressOf());
-		// Attach our pixel shader.
-		context->PSSetShader(
-			skyboxPixelShader.Get(),
-			nullptr,
-			0
-		);
+			// Draw the objects.
+			context->DrawIndexedInstanced(
+				geoCubeLight.modelMaterialFaceVerts[i].size(),
+				activeGeoCubeInstances,
+				0,
+				0,
+				0
+			);
 
-		// Draw the objects.
-		context->DrawIndexed(
-			m_indexCount,
-			0,
-			0
-		);
-
-		context->HSSetShader(nullptr, nullptr, 0);
-		context->DSSetShader(nullptr, nullptr, 0);
-		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			context->HSSetShader(nullptr, nullptr, 0);
+			context->DSSetShader(nullptr, nullptr, 0);
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		}
 	}
 #pragma endregion
 
 #pragma region GREENMARBLEDRAW
 	for (unsigned int i = 0; i < greenMarble_loader.materialCount; i++) {
 		//m_constantBufferData.model = greenMarbleModel;
-		XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
+		XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarble_loader.modelMatrix)));
 		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 		context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
 		context->UpdateSubresource1(instanceBuffer.Get(), 0, NULL, instanceList.data(), 0, 0, 0);
@@ -657,7 +671,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	D3D11_RASTERIZER_DESC rasterizerDesc;
 	rasterizerDesc.FillMode = D3D11_FILL_MODE::D3D11_FILL_SOLID;
 	rasterizerDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_BACK;
-	//rasterizerDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_NONE;
+	rasterizerDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_NONE;
 	rasterizerDesc.FrontCounterClockwise = TRUE;
 	rasterizerDesc.DepthBias = 0;
 	rasterizerDesc.SlopeScaledDepthBias = 0.0f;
@@ -1084,6 +1098,9 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	instanceData.SysMemSlicePitch = 0;
 
 	m_deviceResources->GetD3DDevice()->CreateBuffer(&instanceBufferDesc, &instanceData, instanceBuffer.GetAddressOf());
+
+	geoCubeLightInstanceList.resize(instanceCount);
+	m_deviceResources->GetD3DDevice()->CreateBuffer(&instanceBufferDesc, &instanceData, geoInstanceBuffer.GetAddressOf());
 #pragma endregion
 
 #pragma region PILLARTYPE1
@@ -1117,7 +1134,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 #pragma endregion
 
 #pragma region GEOMETRYSHADER
-	//Skybox
+	//Sample Hull and Domain shaders
 	auto loadSampleHSTask = DX::ReadDataAsync(L"SampleHullShader.cso");
 	auto loadSampleDSTask = DX::ReadDataAsync(L"SampleDomainShader.cso");
 
@@ -1128,7 +1145,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 				&fileData[0],
 				fileData.size(),
 				nullptr,
-				&sampleHullShader
+				sampleHullShader.GetAddressOf()
 			)
 		);
 	});
@@ -1139,11 +1156,65 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 				&fileData[0],
 				fileData.size(),
 				nullptr,
-				&sampleDomainShader
+				sampleDomainShader.GetAddressOf()
 			)
 		);
 	});
 
+	//Model Loaded Hull and Domain shaders, with matching vertex shader
+	auto loadGeoVSTask = DX::ReadDataAsync(L"GeoVertexShader.cso");
+	auto loadGeoSkyboxPSTask = DX::ReadDataAsync(L"GeoSkyboxPixelShader.cso");
+	auto loadGeoHSTask = DX::ReadDataAsync(L"geoHullShader.cso");
+	auto loadGeoDSTask = DX::ReadDataAsync(L"geoDomainShader.cso");
+
+
+	auto createGeoVSTask = loadGeoVSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateVertexShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				geoVertexShader.GetAddressOf()
+			)
+		);
+	});
+
+	auto createGeoSkyboxPSTask = loadGeoSkyboxPSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreatePixelShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				geoSkyboxPixelShader.GetAddressOf()
+			)
+		);
+	});
+
+	auto createGeoHSTask = loadGeoHSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateHullShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				geoHullShader.GetAddressOf()
+			)
+		);
+	});
+
+	auto createGeoDSTask = loadGeoDSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateDomainShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				geoDomainShader.GetAddressOf()
+			)
+		);
+	});
+#pragma endregion
+
+#pragma region GEOCUBELIGHT
+	bool geoCubeLightLoaded = geoCubeLight.loadMaterialOBJ(m_deviceResources, "Assets\\halfUnitCube\\halfUnitCube.obj");
 #pragma endregion
 
 #pragma region THREADJOINING
@@ -1210,4 +1281,13 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	//Geometry Shader
 	sampleHullShader.Reset();
 	sampleDomainShader.Reset();
+	geoVertexShader.Reset();
+	geoSkyboxPixelShader.Reset();
+	geoHullShader.Reset();
+	geoDomainShader.Reset();
+
+	//GeoCubeLight
+	geoCubeLight.~ModelLoader();
+	geoInstanceBuffer.Reset();
+	geoCubeLightInstanceList.clear();
 }

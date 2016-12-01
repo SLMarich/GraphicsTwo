@@ -68,6 +68,9 @@
     <Filter Include="Assets\Pillar">
       <UniqueIdentifier>{38cbc35f-4491-4517-9f7f-e33709cb1cac}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Assets\halfUnitCube">
+      <UniqueIdentifier>{f341ee08-0321-440d-8b83-699c0b399e54}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
@@ -122,6 +125,9 @@
     <None Include="Assets\Pillar\pillarType1.obj">
       <Filter>Assets\Pillar</Filter>
     </None>
+    <None Include="Assets\halfUnitCube\halfUnitCube.obj">
+      <Filter>Assets\halfUnitCube</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="SkyboxVertexShader.hlsl">
@@ -143,6 +149,18 @@
       <Filter>Content</Filter>
     </FxCompile>
     <FxCompile Include="SampleDomainShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="GeoVertexShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="GeoHullShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="GeoDomainShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="GeoSkyboxPixelShader.hlsl">
       <Filter>Content</Filter>
     </FxCompile>
   </ItemGroup>

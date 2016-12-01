@@ -82,7 +82,6 @@ namespace GraphicsTwoProject
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	greenMarble_pixelShader;
 		Microsoft::WRL::ComPtr<ID3D11Texture2D>		greenMarbleDiffuseTexture;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	greenMarbleDiffuseSRV;
-		DirectX::XMFLOAT4X4 greenMarbleModel;
 
 		//Lighting
 		Lighting sampleLight;
@@ -102,13 +101,22 @@ namespace GraphicsTwoProject
 		ModelLoader pillarType1_loader;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	pillarType1DiffuseTexture;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	pillarType1DiffuseSRV;
-		DirectX::XMFLOAT4X4 pillarType1Modle;
 		unsigned int activePillarType1Instances;
 		std::vector<instancePositionStructure> pillarType1InstanceList;
 
 		//Geometry Shaders
 		Microsoft::WRL::ComPtr<ID3D11HullShader>	sampleHullShader;
 		Microsoft::WRL::ComPtr<ID3D11DomainShader>	sampleDomainShader;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader>	geoVertexShader;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>	geoSkyboxPixelShader;
+		Microsoft::WRL::ComPtr<ID3D11HullShader>	geoHullShader;
+		Microsoft::WRL::ComPtr<ID3D11DomainShader>	geoDomainShader;
+
+		//Geo compatible cubeLight
+		ModelLoader geoCubeLight;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		geoInstanceBuffer;
+		unsigned int activeGeoCubeInstances;
+		std::vector<instancePositionStructure>		geoCubeLightInstanceList;
 	};
 }
 
