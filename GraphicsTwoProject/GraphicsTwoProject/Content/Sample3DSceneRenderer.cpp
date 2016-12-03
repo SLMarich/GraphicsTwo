@@ -243,6 +243,12 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)));
 	XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, /*XMMatrixTranspose(*/XMLoadFloat4x4(&cubelightModel));
 	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixIdentity());
+
+	XMStoreFloat4x4(&geoInstanceList[0].matrix,
+		XMMatrixTranspose(
+		XMMatrixMultiply(
+			XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
+			XMMatrixTranslation(0.0f,0.0f,0.0f))));
 #pragma endregion
 
 #pragma region GEOMETRYSHADERUPDATES
@@ -391,7 +397,8 @@ void Sample3DSceneRenderer::Render()
 	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.0f, 0);
 #pragma endregion
 
-#pragma region CUBEDRAW
+#pragma region CUBELIGHTDRAW
+#pragma region NOGEOSHADER
 	if (!geoShaderEnabled) {
 		// Prepare the constant buffer to send it to the graphics device.
 		//XMStoreFloat4x4(&m_constantBufferData.model,XMMatrixTranspose(XMLoadFloat4x4(&cubeModel)));
@@ -459,12 +466,15 @@ void Sample3DSceneRenderer::Render()
 			0
 		);
 	}
+#pragma endregion
+#pragma region GEOSHADERACTIVE
 	else {
 		for (unsigned int i = 0; i < geoCubeLight.materialCount; i++) {
-			XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
+			//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
 			XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMMatrixIdentity());
 			//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&geoCubeLight.modelMatrix));
-			context->UpdateSubresource1(geoInstanceBuffer.Get(), 0, NULL, geoCubeLightInstanceList.data(), 0, 0, 0);
+			//context->UpdateSubresource1(geoInstanceBuffer.Get(), 0, NULL, geoCubeLightInstanceList.data(), 0, 0, 0);
+			context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, geoInstanceList.data(), 0, 0, 0);
 			context->UpdateSubresource1(
 				m_constantBuffer.Get(),
 				0,
@@ -483,14 +493,16 @@ void Sample3DSceneRenderer::Render()
 			offsets[0] = 0;
 			offsets[1] = 0;
 			bufferPointers[0] = geoCubeLight.vertexBuffers[i].Get();
-			bufferPointers[1] = geoInstanceBuffer.Get();
+			//bufferPointers[1] = geoInstanceBuffer.Get();
+			bufferPointers[1] = cubeLightInstanceBuffer.Get();
 			//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
 			context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
 			context->IASetIndexBuffer(geoCubeLight.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
 
 			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
 
-			context->IASetInputLayout(instanceInputLayout.Get());
+			//context->IASetInputLayout(instanceInputLayout.Get());
+			context->IASetInputLayout(geoInstanceInputLayout.Get());
 
 			// Attach our vertex shader.
 			context->VSSetShader(
@@ -511,7 +523,7 @@ void Sample3DSceneRenderer::Render()
 			);
 
 			// Send the constant buffer to the graphics device.
-			context->VSSetConstantBuffers1(
+			context->DSSetConstantBuffers1(
 				0,
 				1,
 				m_constantBuffer.GetAddressOf(),
@@ -542,6 +554,8 @@ void Sample3DSceneRenderer::Render()
 			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		}
 	}
+#pragma endregion
+
 #pragma endregion
 
 #pragma region GREENMARBLEDRAW
@@ -579,8 +593,8 @@ void Sample3DSceneRenderer::Render()
 		// Send the constant buffer to the graphics device.
 		context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
 
-		ID3D11ShaderResourceView* greenMarbleViews[] = { greenMarbleDiffuseSRV.Get(), cubelightShaderResourceView.Get() };
-		context->PSSetShaderResources(0, 2, greenMarbleViews);
+		ID3D11ShaderResourceView* greenMarbleViews[] = { greenMarbleDiffuseSRV.Get(), greenMarbleNormalSRV.Get(), cubelightShaderResourceView.Get() };
+		context->PSSetShaderResources(0, 3, greenMarbleViews);
 
 		//Set samplers
 		ID3D11SamplerState* greenMarbleSamplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
@@ -639,8 +653,8 @@ void Sample3DSceneRenderer::Render()
 		// Send the constant buffer to the graphics device.
 		context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
 
-		ID3D11ShaderResourceView* pillarType1Views[] = { pillarType1DiffuseSRV.Get(), cubelightShaderResourceView.Get() };
-		context->PSSetShaderResources(0, 2, pillarType1Views);
+		ID3D11ShaderResourceView* pillarType1Views[] = { pillarType1DiffuseSRV.Get(), pillarType1NormalSRV.Get(), cubelightShaderResourceView.Get() };
+		context->PSSetShaderResources(0, 3, pillarType1Views);
 
 		//Set samplers
 		ID3D11SamplerState* pillarType1Samplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
@@ -671,7 +685,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	D3D11_RASTERIZER_DESC rasterizerDesc;
 	rasterizerDesc.FillMode = D3D11_FILL_MODE::D3D11_FILL_SOLID;
 	rasterizerDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_BACK;
-	rasterizerDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_NONE;
+	//rasterizerDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_NONE;
 	rasterizerDesc.FrontCounterClockwise = TRUE;
 	rasterizerDesc.DepthBias = 0;
 	rasterizerDesc.SlopeScaledDepthBias = 0.0f;
@@ -709,12 +723,24 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		(ID3D11Resource**)greenMarbleDiffuseTexture.GetAddressOf(),
 		greenMarbleDiffuseSRV.GetAddressOf(), 0);
 
+	//Green Marble Normal Map
+	std::thread greenMarbleNormalThread(
+		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
+		L"Assets\\CubeLight\\greenMarbleTielsNormal.dds",
+		(ID3D11Resource**)greenMarbleNormalTexture.GetAddressOf(),
+		greenMarbleNormalSRV.GetAddressOf(),0);
+
 	//PillarType1
 	std::thread pillarType1DiffuseThread(
 		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
 		L"Assets\\Pillar\\SeemlessMarble1.dds",
 		(ID3D11Resource**)pillarType1DiffuseTexture.GetAddressOf(),
 		pillarType1DiffuseSRV.GetAddressOf(), 0);
+	std::thread pillarType1NormalThread(
+		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
+		L"Assets\\Pillar\\SeemlessMarble1Normal.dds",
+		(ID3D11Resource**)pillarType1NormalTexture.GetAddressOf(),
+		pillarType1NormalSRV.GetAddressOf(),0);
 
 #pragma endregion
 
@@ -1101,6 +1127,12 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 	geoCubeLightInstanceList.resize(instanceCount);
 	m_deviceResources->GetD3DDevice()->CreateBuffer(&instanceBufferDesc, &instanceData, geoInstanceBuffer.GetAddressOf());
+
+	geoInstanceCount = 30;
+	geoInstanceList.resize(geoInstanceCount);
+	instanceBufferDesc.ByteWidth = sizeof(geoInstanceStructure)*geoInstanceCount;
+	m_deviceResources->GetD3DDevice()->CreateBuffer(&instanceBufferDesc, &instanceData, cubeLightInstanceBuffer.GetAddressOf());
+
 #pragma endregion
 
 #pragma region PILLARTYPE1
@@ -1177,6 +1209,29 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 				geoVertexShader.GetAddressOf()
 			)
 		);
+
+		static const D3D11_INPUT_ELEMENT_DESC geoInstanceVertexDesc[] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT , D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT , D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT ,D3D11_INPUT_PER_VERTEX_DATA,0 },
+			{ "TANGENT",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA,0 },
+			{ "BINORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA,0 },
+			{ "INSTANCE",0,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+			{ "INSTANCE",1,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+			{ "INSTANCE",2,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+			{ "INSTANCE",3,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+		};
+
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateInputLayout(
+				geoInstanceVertexDesc,
+				ARRAYSIZE(geoInstanceVertexDesc),
+				&fileData[0],
+				fileData.size(),
+				&geoInstanceInputLayout
+			)
+		);
 	});
 
 	auto createGeoSkyboxPSTask = loadGeoSkyboxPSTask.then([this](const std::vector<byte>& fileData) {
@@ -1221,7 +1276,9 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	skyboxTextureThread.join();
 	cubeLightDiffuseThread.join();
 	greenMarbleDiffuseThread.join();
+	greenMarbleNormalThread.join();
 	pillarType1DiffuseThread.join();
+	pillarType1NormalThread.join();
 #pragma endregion
 
 	// Once the cube is loaded, the object is ready to be rendered.
@@ -1263,15 +1320,21 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	//Green Marble
 	greenMarble_loader.~ModelLoader();
 	greenMarble_pixelShader.Reset();
+	greenMarbleDiffuseTexture.Reset();
+	greenMarbleNormalTexture.Reset();
+	greenMarbleDiffuseSRV.Reset();
+	greenMarbleNormalSRV.Reset();
 
 	//Lighting cleanup
 	lightConstantBuffer.Reset();
 
 	//Instancing cleanup
 	instanceBuffer.Reset();
-	instanceList.clear();
-	instanceInputLayout.Reset();
 	instanceVertexShader.Reset();
+	instanceList.clear();
+	geoInstanceList.clear();
+	instanceInputLayout.Reset();
+	geoInstanceInputLayout.Reset();
 
 	//Pillar type 1
 	pillarType1DiffuseSRV.Reset();
@@ -1290,4 +1353,5 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	geoCubeLight.~ModelLoader();
 	geoInstanceBuffer.Reset();
 	geoCubeLightInstanceList.clear();
+	cubeLightInstanceBuffer.Reset();
 }

@@ -128,6 +128,12 @@
     <None Include="Assets\halfUnitCube\halfUnitCube.obj">
       <Filter>Assets\halfUnitCube</Filter>
     </None>
+    <None Include="Assets\CubeLight\greenMarbleTilesNormalMap.dds">
+      <Filter>Assets\CubeLight</Filter>
+    </None>
+    <None Include="Assets\Pillar\SeemlessMarble1Normal.dds">
+      <Filter>Assets\Pillar</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="SkyboxVertexShader.hlsl">

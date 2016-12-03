@@ -7,6 +7,7 @@ TextureCube boxTexture : register (t0);
 struct PixelShaderInput
 {
 	float4 pos : SV_POSITION;
+	float3 skyPos : SKYPOS;
 	float2 uv : TEXCOORD;
 	float3 norm : NORMAL;
 	float4 worldPos : W_POS;
@@ -17,5 +18,6 @@ struct PixelShaderInput
 // A pass-through function for the (interpolated) color data.
 float4 main(PixelShaderInput input) : SV_TARGET
 {
-	return boxTexture.Sample(LinearSampler,(float3)input.norm);
+	return boxTexture.Sample(LinearSampler,input.skyPos);
+	//return boxTexture.Sample(LinearSampler,(float3)input.norm);
 }

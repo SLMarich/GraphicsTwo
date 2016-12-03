@@ -48,4 +48,7 @@ namespace GraphicsTwoProject
 		DirectX::XMFLOAT3	position;
 		DirectX::XMFLOAT4X4	rotation;
 	};
+	struct geoInstanceStructure {
+		DirectX::XMFLOAT4X4	matrix;
+	};
 }
