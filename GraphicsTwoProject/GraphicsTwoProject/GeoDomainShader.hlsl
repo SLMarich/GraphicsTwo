@@ -50,12 +50,6 @@ DS_OUTPUT main(
 	Output.skyPos = Output.pos.xyz;
 	
 	//Project point onto planes, then interpolate
-	//float dist1 = dot((Output.pos - (float4)(normalize(patch[0].norm),0.0f)), (float4)(normalize(patch[0].norm),0.0f));
-	//float dist2 = dot((Output.pos - (float4)(normalize(patch[1].norm),0.0f)), (float4)(normalize(patch[1].norm),0.0f));
-	//float dist3 = dot((Output.pos - (float4)(normalize(patch[2].norm),0.0f)), (float4)(normalize(patch[2].norm),0.0f));
-	//float4 project1 = Output.pos - (float4)(normalize(patch[0].norm),0.0f*domain.x)*dist1;
-	//float4 project2 = Output.pos - (float4)(normalize(patch[1].norm),0.0f*domain.y)*dist1;
-	//float4 project3 = Output.pos - (float4)(normalize(patch[2].norm),0.0f*domain.z)*dist1;
 	float dist1 = dot((Output.pos.xyz - normalize(patch[0].norm)), normalize(patch[0].norm));
 	float dist2 = dot((Output.pos.xyz - normalize(patch[1].norm)), normalize(patch[1].norm));
 	float dist3 = dot((Output.pos.xyz - normalize(patch[2].norm)), normalize(patch[2].norm));
@@ -63,14 +57,6 @@ DS_OUTPUT main(
 	float3 project2 = Output.pos.xyz - normalize(patch[1].norm)*dist2;
 	float3 project3 = Output.pos.xyz - normalize(patch[2].norm)*dist3;
 	Output.pos = float4(project1*domain.x + project2*domain.y + project3*domain.z, 1.0f);// Output.pos.w);
-	//Output.pos.x += 1;
-	float3 lerpNorm = lerp(patch[0].norm, patch[1].norm, patch[2].norm);
-	//Output.pos = Output.pos + Output.pos;
-	//Output.pos = lerp(project1 + (float4)(patch[0].norm, 0.0f), project2 + (float4)(patch[1].norm, 0.0f), project3 + (float4)(patch[2].norm, 0.0f));
-	//Output.pos = lerp(project1 + patch[0].norm, project2 + patch[1].norm, project3 + patch[2].norm);
-	//Output.pos = float4((patch[0].pos+(float4)(patch[0].norm,0.0f))*domain.x + (patch[1].pos+(float4)(patch[0].norm,0.0f))*domain.y + (patch[2].pos+(float4)(patch[0].norm,0.0f))*domain.z);
-
-	Output.norm = patch[0].norm*domain.x + patch[1].norm*domain.y + patch[2].norm * domain.z;
 
 	//Adjust for instance
 	Output.pos = mul(Output.pos, patch[0].instanceMatrix);
@@ -87,6 +73,7 @@ DS_OUTPUT main(
 	Output.uv = patch[0].uv*domain.x + patch[1].uv*domain.y + patch[2].uv*domain.z;
 
 	//Calculate normal against world, then normalize the final value
+	Output.norm = patch[0].norm*domain.x + patch[1].norm*domain.y + patch[2].norm * domain.z;
 	Output.norm = mul(Output.norm, (float3x3)model);
 	Output.norm = normalize(Output.norm);
 	//Calculate tangent ector against world and then normalize

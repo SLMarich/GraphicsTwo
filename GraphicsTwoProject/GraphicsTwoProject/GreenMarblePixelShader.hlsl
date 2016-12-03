@@ -53,6 +53,8 @@ if (textureColor.w < 0.5f) {
 }
 float3 mappedNorm = normalTexture.Sample(sampleFilter, input.uv);
 mappedNorm = (mappedNorm*2.0f) - 1.0f;
+//float3 crossed = cross(input.norm, input.tangent);
+//mappedNorm = (mappedNorm.x*input.tangent) + (mappedNorm.y*crossed) + (mappedNorm.z*input.norm);
 mappedNorm = (mappedNorm.x*input.tangent) + (mappedNorm.y*input.binormal) + (mappedNorm.z*input.norm);
 mappedNorm = normalize(mappedNorm);
 
@@ -170,16 +172,17 @@ float4 spotlightResult = spotlightRatio * spotlightColor * spotlightAttenuation;
 //specularIntensity = specularTexture.Sample(sampleFilter, input.uv);
 ////Calculate the reflection vector based on the light intensity, normal vector, and light direction
 //float spotlightIntensity = dot(spotlightDirection, -input.norm);
-float spotlightIntensity = dot(spotlightDirection, -mappedNorm);
-spotlightIntensity = saturate(spotlightIntensity);
-//reflection = normalize(2.0f * spotlightIntensity*input.norm - spotlightNormDirection);
-reflection = normalize(2.0f * spotlightIntensity*mappedNorm - spotlightNormDirection);
-////Determine the amount of specular light based on the reflection vector, viewing direction, and specular power
-specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
-////Use the specular map to determine the intensity of a specular light at this pixel
-specular = specular*spotlightIntensity;
-////Add the specular component last to the output color
-spotlightResult += specular;
+//SPOTLIGHT SPECULAR:
+//float spotlightIntensity = dot(invspotlightDirection, -mappedNorm);
+//spotlightIntensity = saturate(spotlightIntensity);
+////reflection = normalize(2.0f * spotlightIntensity*input.norm - spotlightNormDirection);
+//reflection = normalize(2.0f * spotlightIntensity*mappedNorm - spotlightNormDirection);
+//////Determine the amount of specular light based on the reflection vector, viewing direction, and specular power
+//specular = pow(saturate(dot(reflection, specularDirection)), specularPower);
+//////Use the specular map to determine the intensity of a specular light at this pixel
+//specular = specular*spotlightIntensity;
+//////Add the specular component last to the output color
+//spotlightResult += specular;
 
 //float4 sampled = diffuseTexture.Sample(oakFilter, input.uv) * saturate(pointLightResult + ambientTerm + specularResult + directionalResult + spotlightResult);
 //float4 sampled = textureColor * saturate(pointLightResult + ambientTerm + specularResult + directionalResult + spotlightResult);

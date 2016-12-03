@@ -52,16 +52,21 @@ InstancePixelShaderInput main(InstanceVertexShaderInput input)
 	output.uv = input.uv;
 	//output.norm = input.norm;
 
+	float4x4 worldMatrix = mul(model, input.instanceRotation);
+
 	//Calculate normal against world, then normalize the final value
-	output.norm = mul(input.norm, (float3x3)model);
+	output.norm = mul(input.norm, worldMatrix);
 	output.norm = normalize(output.norm);
+	//output.norm = normalize(input.norm);
 
 	//Calculate tangent vector against world and then normalize
-	output.tangent = mul(input.tangent, (float3x3)model);
+	output.tangent = mul(input.tangent, worldMatrix);
 	output.tangent = normalize(output.tangent);
+	//output.tangent = normalize(input.tangent);
 
 	//Calculate binormal vector against world then normalize
-	output.binormal = mul(input.binormal, (float3x3)model);
+	output.binormal = mul(input.binormal, worldMatrix);
+	//output.binormal = cross(output.norm, output.tangent);
 	output.binormal = normalize(output.binormal);
 
 	return output;

@@ -565,6 +565,7 @@ void Sample3DSceneRenderer::Render()
 		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 		context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
 		context->UpdateSubresource1(instanceBuffer.Get(), 0, NULL, instanceList.data(), 0, 0, 0);
+		context->UpdateSubresource1(greenMarble_loader.vertexBuffers[i].Get(), 0, NULL, greenMarble_loader.modelMaterialFaceVerts[i].data(), 0, 0, 0);
 
 		unsigned int strides[2];
 		unsigned int offsets[2];
@@ -726,7 +727,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	//Green Marble Normal Map
 	std::thread greenMarbleNormalThread(
 		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
-		L"Assets\\CubeLight\\greenMarbleTielsNormal.dds",
+		L"Assets\\CubeLight\\greenMarbleTilesNormalMap50bias.dds",
 		(ID3D11Resource**)greenMarbleNormalTexture.GetAddressOf(),
 		greenMarbleNormalSRV.GetAddressOf(),0);
 
@@ -1075,6 +1076,13 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 #pragma region GREENMARBLE
 	bool groundMarbleLoaded = greenMarble_loader.loadMaterialOBJ(m_deviceResources, "Assets\\CubeLight\\groundQuad.obj");
+
+	for (unsigned int i = 0; i < greenMarble_loader.modelMaterialFaceVerts.size(); i++) {
+		for (unsigned int j = 0; j < greenMarble_loader.modelMaterialFaceVerts[i].size(); j++) {
+			greenMarble_loader.modelMaterialFaceVerts[i][j].tangent = XMFLOAT3(1.0f, 0.0f, 0.0f);
+			greenMarble_loader.modelMaterialFaceVerts[i][j].binormal = XMFLOAT3(0.0f, 0.0f, 1.0f);
+		}
+	}
 
 	if (groundMarbleLoaded) {
 		// Load shaders asynchronously.

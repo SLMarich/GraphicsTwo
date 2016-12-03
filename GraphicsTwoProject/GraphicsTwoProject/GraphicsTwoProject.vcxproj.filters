@@ -134,6 +134,9 @@
     <None Include="Assets\Pillar\SeemlessMarble1Normal.dds">
       <Filter>Assets\Pillar</Filter>
     </None>
+    <None Include="Assets\CubeLight\greenMarbleTilesNormalMap50bias.dds">
+      <Filter>Assets\CubeLight</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="SkyboxVertexShader.hlsl">
