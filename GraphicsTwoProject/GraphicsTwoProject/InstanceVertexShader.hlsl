@@ -41,7 +41,7 @@ InstancePixelShaderInput main(InstanceVertexShaderInput input)
 
 	// Transform the vertex position into projected space.
 	pos = mul(pos, model);
-		//Rotate
+	//Rotate
 	pos = mul(pos, input.instanceRotation);
 	output.worldPos = pos;
 	pos = mul(pos, view);

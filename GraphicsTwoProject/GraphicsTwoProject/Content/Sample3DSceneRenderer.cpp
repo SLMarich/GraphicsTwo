@@ -208,25 +208,33 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 #pragma endregion
 
 #pragma region INSTANCEUPDATES
+	float infiniteGroundX = camera._41, infiniteGroundZ = camera._43;
+	infiniteGroundX = floorf(infiniteGroundX*0.25f)*4.0f;
+	infiniteGroundZ = floorf(infiniteGroundZ*0.25f)*4.0f;
+
 	activeInstances = 900;
 	for (unsigned int i = 0; i < 30; i++) {
 		for (unsigned int j = 0; j < 30; j++) {
-			instanceList[i * 30 + j].position = DirectX::XMFLOAT3((float)(i + i) - 30.0f, -2.0f, (float)(j + j) - 30.0f);
+			instanceList[i * 30 + j].position = DirectX::XMFLOAT3((float)(i + i) - 30.0f + infiniteGroundX, -2.0f, (float)(j + j) - 30.0f + infiniteGroundZ);
 			XMMATRIX groundRotation = XMMatrixMultiply(XMMatrixTranslation(instanceList[i * 30 + j].position.x, instanceList[i * 30 + j].position.y, instanceList[i * 30 + j].position.z), XMLoadFloat4x4(&cubelightModel));
 			XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixIdentity());
 			if (groundMove){
 				XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixTranspose(groundRotation));
-				instanceList[i * 30 + j].position = XMFLOAT3(groundRotation.r[3].m128_f32[0], groundRotation.r[3].m128_f32[1], groundRotation.r[3].m128_f32[2]);
+				//instanceList[i * 30 + j].position = XMFLOAT3(groundRotation.r[3].m128_f32[0], groundRotation.r[3].m128_f32[1], groundRotation.r[3].m128_f32[2]);
+				instanceList[i * 30 + j].position = XMFLOAT3(instanceList[i * 30 + j].position.x *2.0f, instanceList[i * 30 + j].position.y, instanceList[i * 30 + j].position.z*2.0f);
 			}
 		}
 	}
-	instanceList[15*30+15] = instanceList[15*30+15+1];
+	//instanceList[15*30+15] = instanceList[15*30+15+1];
 
-	activePillarType1Instances = 450;
+	activePillarType1Instances = 900;
 	for (unsigned int i = 0; i < 15; i++) {
 		for (unsigned int j = 0; j < 15; j++) {
 			pillarType1InstanceList[i*15+j] = instanceList[i*60+j*2];
 			pillarType1InstanceList[i * 15 + j].position = DirectX::XMFLOAT3(pillarType1InstanceList[i * 15 + j].position.x+0.5f, pillarType1InstanceList[i * 15 + j].position.y, pillarType1InstanceList[i * 15 + j].position.z + 0.5f);
+			
+			pillarType1InstanceList[(i * 15 + j) + 450] = pillarType1InstanceList[i * 15 + j];
+			pillarType1InstanceList[(i * 15 + j) + 450].position = XMFLOAT3(pillarType1InstanceList[(i * 15 + j) + 450].position.x, pillarType1InstanceList[(i * 15 + j) + 450].position.y + 3.25f/*2.857f*/, pillarType1InstanceList[(i * 15 + j) + 450].position.z);
 		}
 	}
 	//pillarType1InstanceList[0].position = DirectX::XMFLOAT3(-5.0f, 0.0f, -5.0f);
