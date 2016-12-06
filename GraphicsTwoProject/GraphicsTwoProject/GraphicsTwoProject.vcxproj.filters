@@ -38,12 +38,6 @@
     <ClCompile Include="Content\SampleFpsTextRenderer.cpp">
       <Filter>Content</Filter>
     </ClCompile>
-    <FxCompile Include="Content\SamplePixelShader.hlsl">
-      <Filter>Content</Filter>
-    </FxCompile>
-    <FxCompile Include="Content\SampleVertexShader.hlsl">
-      <Filter>Content</Filter>
-    </FxCompile>
     <Image Include="Assets\LockScreenLogo.scale-200.png">
       <Filter>Assets</Filter>
     </Image>
@@ -70,6 +64,21 @@
     </Filter>
     <Filter Include="Assets\halfUnitCube">
       <UniqueIdentifier>{f341ee08-0321-440d-8b83-699c0b399e54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets\7x7sphere">
+      <UniqueIdentifier>{4e30c86d-4efa-4349-a5a3-d764abe96708}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Content\Vertex Shaders">
+      <UniqueIdentifier>{9b49ec04-3fad-4ffa-a06d-b4890191106f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Content\Pixel Shaders">
+      <UniqueIdentifier>{cf6e8d32-72f6-403a-ac7f-071b0997b367}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Content\Hull Shaders">
+      <UniqueIdentifier>{fb2e2581-1996-4ac1-aa46-f63a94d49b8f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Content\Domain Shaders">
+      <UniqueIdentifier>{48cde9b4-554e-43fe-b64b-d171854a3750}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -137,40 +146,67 @@
     <None Include="Assets\CubeLight\greenMarbleTilesNormalMap50bias.dds">
       <Filter>Assets\CubeLight</Filter>
     </None>
+    <None Include="Assets\7x7sphere\7x7sphere.obj">
+      <Filter>Assets\7x7sphere</Filter>
+    </None>
+    <None Include="Assets\7x7sphere\glass03.dds">
+      <Filter>Assets\7x7sphere</Filter>
+    </None>
+    <None Include="Assets\7x7sphere\glass03_55bias.dds">
+      <Filter>Assets\7x7sphere</Filter>
+    </None>
+    <None Include="Assets\7x7sphere\glassSphere.obj">
+      <Filter>Assets\7x7sphere</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="SkyboxVertexShader.hlsl">
-      <Filter>Content</Filter>
-    </FxCompile>
-    <FxCompile Include="SkyboxPixelShader.hlsl">
-      <Filter>Content</Filter>
-    </FxCompile>
-    <FxCompile Include="InstanceVertexShader.hlsl">
-      <Filter>Content</Filter>
-    </FxCompile>
-    <FxCompile Include="GreenMarblePixelShader.hlsl">
-      <Filter>Content</Filter>
-    </FxCompile>
-    <FxCompile Include="SampleHullShader.hlsl">
-      <Filter>Content</Filter>
-    </FxCompile>
-    <FxCompile Include="SampleHullVertexShader.hlsl">
-      <Filter>Content</Filter>
-    </FxCompile>
-    <FxCompile Include="SampleDomainShader.hlsl">
-      <Filter>Content</Filter>
-    </FxCompile>
     <FxCompile Include="GeoVertexShader.hlsl">
-      <Filter>Content</Filter>
-    </FxCompile>
-    <FxCompile Include="GeoHullShader.hlsl">
-      <Filter>Content</Filter>
+      <Filter>Content\Vertex Shaders</Filter>
     </FxCompile>
     <FxCompile Include="GeoDomainShader.hlsl">
-      <Filter>Content</Filter>
+      <Filter>Content\Domain Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="GeoHullShader.hlsl">
+      <Filter>Content\Hull Shaders</Filter>
     </FxCompile>
     <FxCompile Include="GeoSkyboxPixelShader.hlsl">
-      <Filter>Content</Filter>
+      <Filter>Content\Pixel Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="glassSpherePixelShader.hlsl">
+      <Filter>Content\Pixel Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="GreenMarblePixelShader.hlsl">
+      <Filter>Content\Pixel Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="InstanceMatrixVertexShader.hlsl">
+      <Filter>Content\Vertex Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="InstanceVertexShader.hlsl">
+      <Filter>Content\Vertex Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="PhongDomainShader.hlsl">
+      <Filter>Content\Domain Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="SampleDomainShader.hlsl">
+      <Filter>Content\Domain Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="SampleHullVertexShader.hlsl">
+      <Filter>Content\Vertex Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="SampleHullShader.hlsl">
+      <Filter>Content\Hull Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="SkyboxPixelShader.hlsl">
+      <Filter>Content\Pixel Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="SkyboxVertexShader.hlsl">
+      <Filter>Content\Vertex Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\SampleVertexShader.hlsl">
+      <Filter>Content\Vertex Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\SamplePixelShader.hlsl">
+      <Filter>Content\Pixel Shaders</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

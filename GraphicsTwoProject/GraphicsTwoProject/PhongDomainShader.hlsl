@@ -8,7 +8,6 @@ cbuffer ModelViewProjectionConstantBuffer : register(b0)
 struct DS_OUTPUT
 {
 	float4 pos : SV_POSITION;
-	float3 skyPos : SKYPOS;
 	float2 uv : TEXCOORD;
 	float3 norm : NORMAL;
 	float4 worldPos : W_POS;
@@ -47,8 +46,7 @@ DS_OUTPUT main(
 
 	// Insert code to compute Output here
 	Output.pos = float4(patch[0].pos*domain.x + patch[1].pos*domain.y + patch[2].pos*domain.z);
-	Output.skyPos = Output.pos.xyz;
-	
+
 	//Project point onto planes, then interpolate
 	float dist1 = dot((Output.pos.xyz - normalize(patch[0].norm)), normalize(patch[0].norm));
 	float dist2 = dot((Output.pos.xyz - normalize(patch[1].norm)), normalize(patch[1].norm));
@@ -58,7 +56,7 @@ DS_OUTPUT main(
 	float3 project3 = Output.pos.xyz - normalize(patch[2].norm)*dist3;
 	Output.pos = float4(project1*domain.x + project2*domain.y + project3*domain.z, 1.0f);// Output.pos.w);
 
-	//Adjust for instance
+																						 //Adjust for instance
 	Output.pos = mul(Output.pos, patch[0].instanceMatrix);
 	//Translate for instance
 	//Output.pos.x += patch[0].instancePosition.x;
@@ -86,7 +84,7 @@ DS_OUTPUT main(
 	Output.binormal = normalize(Output.binormal);
 
 	//Output.worldPos = patch[0].worldPos*domain.x + patch[1].worldPos*domain.y + patch[2].worldPos*domain.z;
-	
+
 
 	return Output;
 }

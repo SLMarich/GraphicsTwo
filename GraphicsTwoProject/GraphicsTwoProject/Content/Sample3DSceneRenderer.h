@@ -64,7 +64,7 @@ namespace GraphicsTwoProject
 		float	m_degreesPerSecond;
 		bool	m_tracking;
 
-		DirectX::XMFLOAT4X4 world, camera, projection;// , camera1, projection1;
+		DirectX::XMFLOAT4X4 world, camera, projection, camera1, projection1;
 
 		//Sceen adjusting bools
 		bool toggledChecker = false;
@@ -98,7 +98,9 @@ namespace GraphicsTwoProject
 		unsigned int geoInstanceCount;
 		std::vector<instancePositionStructure> instanceList;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>	instanceVertexShader;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader>	instanceMatrixVertexShader;
 		Microsoft::WRL::ComPtr<ID3D11InputLayout>	instanceInputLayout;
+		Microsoft::WRL::ComPtr<ID3D11InputLayout>	instanceMatrixInputLayout;
 		std::vector<geoInstanceStructure>			geoInstanceList;
 		Microsoft::WRL::ComPtr<ID3D11InputLayout>	geoInstanceInputLayout;
 
@@ -125,6 +127,23 @@ namespace GraphicsTwoProject
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		cubeLightInstanceBuffer;
 		unsigned int activeGeoCubeInstances;
 		std::vector<instancePositionStructure>		geoCubeLightInstanceList;
+
+
+		//7x7sphere
+		ModelLoader glassSphere;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>				glassSphereDiffuseTexture;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>				glassSphereNormalTexture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	glassSphereDiffuseSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	glassSphereNormalSRV;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>			glassSpherePixelShader;
+		std::vector<geoInstanceStructure>					glassSphereInstanceList;
+		unsigned int activeGlassSphereInstances;
+
+		Microsoft::WRL::ComPtr<ID3D11DomainShader>	phongDomainShader;
+
+		//Blend State
+		Microsoft::WRL::ComPtr<ID3D11BlendState>			transparencyBlendState;
+
+		bool instanceMatrixSortFunction(geoInstanceStructure const &a, geoInstanceStructure const &b);
 	};
 }
-

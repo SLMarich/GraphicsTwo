@@ -17,6 +17,15 @@ extern float diffx;
 extern float diffy;
 extern bool left_click;
 
+bool Sample3DSceneRenderer::instanceMatrixSortFunction(geoInstanceStructure const &a, geoInstanceStructure const &b) {
+	XMFLOAT3 posA(a.matrix._14, a.matrix._24, a.matrix._34);
+	XMFLOAT3 posB(b.matrix._14, b.matrix._24, b.matrix._34);
+	XMFLOAT3 posCamera(camera._41, camera._42, camera._43);
+	float distA = sqrt(pow((posA.x - posCamera.x), 2) + pow((posA.y - posCamera.y), 2) + pow((posA.z - posCamera.z), 2));
+	float distB = sqrt(pow((posB.x - posCamera.x), 2) + pow((posB.y - posCamera.y), 2) + pow((posB.z - posCamera.z), 2));
+	return (distA < distB);
+}
+
 // Loads vertex and pixel shaders from files and instantiates the cube geometry.
 Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceResources>& deviceResources) :
 	m_loadingComplete(false),
@@ -80,6 +89,38 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtRH(eye, at, up)));
 	XMStoreFloat4x4(&camera, XMMatrixLookAtRH(eye, at, up));
 #pragma endregion
+
+#pragma region MINIMAPVIEWPROJECTION
+	float aspectRatio1 = (outputSize.Width*0.3f) / (outputSize.Height*0.3f);
+	float fovAngleY1 = 70.0f * XM_PI / 180.0f;
+
+	if (aspectRatio1 < 1.0f)
+	{
+		fovAngleY1 *= 2.0f;
+	}
+
+	XMMATRIX perspectiveMatrix1 = XMMatrixPerspectiveFovRH(
+		fovAngleY1,
+		aspectRatio1,
+		0.01f,
+		100.0f
+	);
+
+	XMFLOAT4X4 orientation1 = m_deviceResources->GetOrientationTransform3D();
+
+	XMMATRIX orientationMatrix1 = XMLoadFloat4x4(&orientation1);
+
+	XMStoreFloat4x4(
+		&projection1,
+		XMMatrixTranspose(perspectiveMatrix1 * orientationMatrix1)
+	);
+	
+	static const XMVECTORF32 eye1 = { 0.0f, 10.0f, 0.0f, 0.0f };
+	static const XMVECTORF32 at1 = { 0.0f, -1.0f, 0.0f, 0.0f };
+	static const XMVECTORF32 up1 = { 0.0f, 1.0f, 0.0f, 0.0f };
+
+	XMStoreFloat4x4(&camera1, XMMatrixLookAtRH(eye1, at1, up1));
+#pragma endregion
 }
 
 // Called once per frame, rotates the cube and calculates the model and view matrices.
@@ -141,6 +182,12 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 			newCam.r[3] = pos;
 		}
 	}
+
+	//Stay above ground
+	if (newCam.r[3].m128_f32[1] < -1.9f) {
+		newCam.r[3].m128_f32[1] = -1.9f;
+	}
+
 	
 	XMStoreFloat4x4(&camera, newCam);
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, newCam)));
@@ -183,12 +230,12 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	sampleLight.spotlightColor = DirectX::XMFLOAT4(0.0f, 0.5f, 0.0f, 1.0f);
 	sampleLight.spotlightConeRatio = 5.0f;
 	//Move spotlight around
-	if (!instanceTracerSlower)
-		instanceTracer++;
-	instanceTracerSlower = !instanceTracerSlower;
-	if (instanceTracer >= activeInstances) {
-		instanceTracer = 0;
-	}
+	//if (!instanceTracerSlower)
+	//	instanceTracer++;
+	//instanceTracerSlower = !instanceTracerSlower;
+	//if (instanceTracer >= activeInstances) {
+	//	instanceTracer = 0;
+	//}
 
 	XMFLOAT4X4 spotlightPosition;
 	XMFLOAT4X4 spotlightDirection;
@@ -208,7 +255,9 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 #pragma endregion
 
 #pragma region INSTANCEUPDATES
+#pragma region GROUNDUPDATES
 	float infiniteGroundX = camera._41, infiniteGroundZ = camera._43;
+	//float infiniteGroundX = 0.0f, infiniteGroundZ = 0.0f;
 	infiniteGroundX = floorf(infiniteGroundX*0.25f)*4.0f;
 	infiniteGroundZ = floorf(infiniteGroundZ*0.25f)*4.0f;
 
@@ -226,8 +275,9 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 		}
 	}
 	//instanceList[15*30+15] = instanceList[15*30+15+1];
-
-	activePillarType1Instances = 900;
+#pragma endregion
+#pragma region PILLARINSTANCEUPDATES
+	activePillarType1Instances = 450;
 	for (unsigned int i = 0; i < 15; i++) {
 		for (unsigned int j = 0; j < 15; j++) {
 			pillarType1InstanceList[i*15+j] = instanceList[i*60+j*2];
@@ -241,22 +291,74 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	//pillarType1InstanceList[1].position = DirectX::XMFLOAT3(5.0f, 0.0f, -5.0f);
 	//pillarType1InstanceList[2].position = DirectX::XMFLOAT3(-5.0f, 0.0f, 5.0f);
 	//pillarType1InstanceList[3].position = DirectX::XMFLOAT3(5.0f, 0.0f, 5.0f);
-
+#pragma endregion
+#pragma region GEOCUBEINSTANCEUPDATES
 	activeGeoCubeInstances = 1;
-	geoCubeLightInstanceList[0].position = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixIdentity());
-	//geoCubeLightInstanceList[1].position = XMFLOAT3(0.0f, 1.0f, 0.0f);
+	//geoCubeLightInstanceList[0].position = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, /*XMMatrixTranspose(*/XMLoadFloat4x4(&cubelightModel));
+	//geoCubeLightInstanceList[1].position = XMFLOAT3(3.0f, 1.0f, 0.0f);
 	//XMStoreFloat4x4(&geoCubeLightInstanceList[1].rotation, XMMatrixIdentity());
-	//geoCubeLightInstanceList[2].position = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)));
-	XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, /*XMMatrixTranspose(*/XMLoadFloat4x4(&cubelightModel));
+	//geoCubeLightInstanceList[2].position = XMFLOAT3(3.0f, 2.0f, 0.0f);
+	//XMStoreFloat4x4(&geoCubeLightInstanceList[2].rotation, XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)));
 	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixIdentity());
-
+	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixIdentity());
 	XMStoreFloat4x4(&geoInstanceList[0].matrix,
 		XMMatrixTranspose(
-		XMMatrixMultiply(
-			XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
-			XMMatrixTranslation(0.0f,0.0f,0.0f))));
+			XMMatrixMultiply(
+				XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
+				XMMatrixTranslation(0.0f, 0.0f, 0.0f))));
+#pragma endregion
+#pragma region GLASSSPHEREINSTANCEUPDATES
+	activeGlassSphereInstances = 14;
+	
+	XMFLOAT4X4 glassSphereMover;
+	XMStoreFloat4x4(&glassSphereMover, XMMatrixMultiply(XMMatrixTranslation(15.0f, 0.0f, 15.0f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 8.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+
+	XMStoreFloat4x4(&glassSphereInstanceList[0].matrix,
+		XMMatrixTranspose(
+			XMMatrixMultiply(
+				XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
+				XMMatrixMultiply(XMMatrixTranslation(glassSphereMover._41*.1f, glassSphereMover._43*.1f + 5.0f, glassSphereMover._41*.1f),
+					XMMatrixRotationY((XM_2PI * 4.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
+	XMStoreFloat4x4(&glassSphereInstanceList[1].matrix,
+		XMMatrixTranspose(
+			XMMatrixMultiply(
+				XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
+				XMMatrixMultiply(XMMatrixTranslation(glassSphereMover._43*.1f, glassSphereMover._41*.1f + 5.0f, -glassSphereMover._43*.1f),
+					XMMatrixRotationY((XM_2PI * 4.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
+	XMStoreFloat4x4(&glassSphereInstanceList[2].matrix,
+		XMMatrixTranspose(
+			XMMatrixMultiply(
+				XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
+				XMMatrixMultiply(XMMatrixTranslation(-glassSphereMover._41*.1f, -glassSphereMover._43*.1f + 5.0f, -glassSphereMover._41*.1f),
+					XMMatrixRotationY((XM_2PI * 4.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
+	XMStoreFloat4x4(&glassSphereInstanceList[3].matrix,
+		XMMatrixTranspose(
+			XMMatrixMultiply(
+				XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
+				XMMatrixMultiply(XMMatrixTranslation(-glassSphereMover._43*.1f, -glassSphereMover._41*.1f + 5.0f, glassSphereMover._43*.1f),
+					XMMatrixRotationY((XM_2PI * 4.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
+
+	for (unsigned int i = 4; i < activeGlassSphereInstances; i++) {
+		XMStoreFloat4x4(&glassSphereInstanceList[i].matrix,
+			XMMatrixTranspose(
+				XMMatrixMultiply(
+					XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
+					XMMatrixMultiply(XMMatrixTranslation(5.0f, 5.0f*(float)(i-4), 5.0f),
+						XMMatrixRotationY((XM_2PI * 0.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
+	}
+
+	geoInstanceStructure sortTemp;
+	for (unsigned int i = 0; i < activeGlassSphereInstances - 1; i++) {
+		for (unsigned int j = 0; j < activeGlassSphereInstances - 1; j++) {
+			if (instanceMatrixSortFunction(glassSphereInstanceList[j], glassSphereInstanceList[j + 1])) {
+				sortTemp = glassSphereInstanceList[j];
+				glassSphereInstanceList[j] = glassSphereInstanceList[j + 1];
+				glassSphereInstanceList[j + 1] = sortTemp;
+			}
+		}
+	}
+#pragma endregion
 #pragma endregion
 
 #pragma region GEOMETRYSHADERUPDATES
@@ -315,102 +417,51 @@ void Sample3DSceneRenderer::StopTracking()
 // Renders one frame using the vertex and pixel shaders.
 void Sample3DSceneRenderer::Render()
 {
+	D3D11_VIEWPORT views[2];
+	views[0] = m_deviceResources->GetScreenViewport();
+	views[1] = m_deviceResources->GetScreenViewport1();
+	for (unsigned int viewTracker = 0; viewTracker < 2; viewTracker++) {
+		m_deviceResources->GetD3DDeviceContext()->RSSetViewports(1, &views[viewTracker]);
+		if (viewTracker == 0) {
+			//Set camera view
+			XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, XMLoadFloat4x4(&camera))));
+			//Set camera projection
+			XMStoreFloat4x4(&m_constantBufferData.projection, XMLoadFloat4x4(&projection));
+		}
 #pragma region STATESETUP
-	//Set rasterizer state
-	if (!wireframeEnabled)
-		m_deviceResources->GetD3DDeviceContext()->RSSetState(m_rasterizerState.Get());
-	else
-		m_deviceResources->GetD3DDeviceContext()->RSSetState(wireframeRasterState.Get());
+		//Set rasterizer state
+		if (!wireframeEnabled)
+			m_deviceResources->GetD3DDeviceContext()->RSSetState(m_rasterizerState.Get());
+		else
+			m_deviceResources->GetD3DDeviceContext()->RSSetState(wireframeRasterState.Get());
 #pragma endregion
 
-	auto context = m_deviceResources->GetD3DDeviceContext();
+		if (viewTracker == 1) {
+			//Set camera view
+			//XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(&XMMatrixDeterminant(XMLoadFloat4x4(&camera1)), XMLoadFloat4x4(&camera1))));
+			XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, XMMatrixMultiply(XMMatrixRotationX((XM_2PI * 4.0f * -180.0f / (m_deviceResources->GetOutputSize().Width*0.3f))),
+				XMMatrixTranslation(camera._41, 15.0f, camera._43)))));
+			//Set camera projection
+			XMStoreFloat4x4(&m_constantBufferData.projection, XMLoadFloat4x4(&projection1));
+			//XMStoreFloat4x4(&m_constantBufferData.projection, XMMatrixIdentity());
 
-	// Loading is asynchronous. Only draw geometry after it's loaded.
-	if (!m_loadingComplete)
-	{
-		return;
-	}
+			//Activate wireframe mode for minimap
+			m_deviceResources->GetD3DDeviceContext()->RSSetState(wireframeRasterState.Get());
+		}
+
+		auto context = m_deviceResources->GetD3DDeviceContext();
+
+		// Loading is asynchronous. Only draw geometry after it's loaded.
+		if (!m_loadingComplete)
+		{
+			return;
+		}
 
 #pragma region SKYBOXDRAW
-	// Prepare the constant buffer to send it to the graphics device.
-	//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&skyboxModel)));
-	m_constantBufferData.model = skyboxModel;
-	
-	context->UpdateSubresource1(
-		m_constantBuffer.Get(),
-		0,
-		NULL,
-		&m_constantBufferData,
-		0,
-		0,
-		0
-		);
-
-	// Each vertex is one instance of the VertexPositionColor struct.
-	UINT stride = sizeof(VertexPositionColor);
-	UINT offset = 0;
-	context->IASetVertexBuffers(
-		0,
-		1,
-		skyboxVertexBuffer.GetAddressOf(),
-		&stride,
-		&offset
-		);
-
-	context->IASetIndexBuffer(
-		skyboxIndexBuffer.Get(),
-		DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
-		0
-		);
-
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	context->IASetInputLayout(skyboxInputLayout.Get());
-
-	// Attach our vertex shader.
-	context->VSSetShader(
-		skyboxVertexShader.Get(),
-		nullptr,
-		0
-		);
-
-	// Send the constant buffer to the graphics device.
-	context->VSSetConstantBuffers1(
-		0,
-		1,
-		m_constantBuffer.GetAddressOf(),
-		nullptr,
-		nullptr
-		);
-
-	//Set pixel shader sampler states
-	context->PSSetSamplers(0, 1, linearSamplerState.GetAddressOf());
-	//Assign pixel shader resources
-	context->PSSetShaderResources(0, 1, skyboxShaderResourceView.GetAddressOf());
-	// Attach our pixel shader.
-	context->PSSetShader(
-		skyboxPixelShader.Get(),
-		nullptr,
-		0
-		);
-
-	// Draw the objects.
-	context->DrawIndexed(
-		skyboxIndexCount,
-		0,
-		0
-		);
-
-	//Clear depth buffer after skybox is drawn
-	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.0f, 0);
-#pragma endregion
-
-#pragma region CUBELIGHTDRAW
-#pragma region NOGEOSHADER
-	if (!geoShaderEnabled) {
 		// Prepare the constant buffer to send it to the graphics device.
-		//XMStoreFloat4x4(&m_constantBufferData.model,XMMatrixTranspose(XMLoadFloat4x4(&cubeModel)));
-		XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
+		//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&skyboxModel)));
+		m_constantBufferData.model = skyboxModel;
+
 		context->UpdateSubresource1(
 			m_constantBuffer.Get(),
 			0,
@@ -422,25 +473,25 @@ void Sample3DSceneRenderer::Render()
 		);
 
 		// Each vertex is one instance of the VertexPositionColor struct.
-		stride = sizeof(VertexPositionColor);
-		offset = 0;
+		UINT stride = sizeof(VertexPositionColor);
+		UINT offset = 0;
 		context->IASetVertexBuffers(
 			0,
 			1,
-			m_vertexBuffer.GetAddressOf(),
+			skyboxVertexBuffer.GetAddressOf(),
 			&stride,
 			&offset
 		);
 
 		context->IASetIndexBuffer(
-			m_indexBuffer.Get(),
+			skyboxIndexBuffer.Get(),
 			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
 			0
 		);
 
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		context->IASetInputLayout(m_inputLayout.Get());
+		context->IASetInputLayout(skyboxInputLayout.Get());
 
 		// Attach our vertex shader.
 		context->VSSetShader(
@@ -458,8 +509,10 @@ void Sample3DSceneRenderer::Render()
 			nullptr
 		);
 
-		//Add SRVs
-		context->PSSetShaderResources(0, 1, cubelightShaderResourceView.GetAddressOf());
+		//Set pixel shader sampler states
+		context->PSSetSamplers(0, 1, linearSamplerState.GetAddressOf());
+		//Assign pixel shader resources
+		context->PSSetShaderResources(0, 1, skyboxShaderResourceView.GetAddressOf());
 		// Attach our pixel shader.
 		context->PSSetShader(
 			skyboxPixelShader.Get(),
@@ -469,20 +522,21 @@ void Sample3DSceneRenderer::Render()
 
 		// Draw the objects.
 		context->DrawIndexed(
-			m_indexCount,
+			skyboxIndexCount,
 			0,
 			0
 		);
-	}
+
+		//Clear depth buffer after skybox is drawn
+		context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.0f, 0);
 #pragma endregion
-#pragma region GEOSHADERACTIVE
-	else {
-		for (unsigned int i = 0; i < geoCubeLight.materialCount; i++) {
-			//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
-			XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMMatrixIdentity());
-			//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&geoCubeLight.modelMatrix));
-			//context->UpdateSubresource1(geoInstanceBuffer.Get(), 0, NULL, geoCubeLightInstanceList.data(), 0, 0, 0);
-			context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, geoInstanceList.data(), 0, 0, 0);
+
+#pragma region CUBELIGHTDRAW
+#pragma region NOGEOSHADER
+		if (!geoShaderEnabled) {
+			// Prepare the constant buffer to send it to the graphics device.
+			//XMStoreFloat4x4(&m_constantBufferData.model,XMMatrixTranspose(XMLoadFloat4x4(&cubeModel)));
+			XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
 			context->UpdateSubresource1(
 				m_constantBuffer.Get(),
 				0,
@@ -493,45 +547,36 @@ void Sample3DSceneRenderer::Render()
 				0
 			);
 
-			unsigned int strides[2];
-			unsigned int offsets[2];
-			ID3D11Buffer* bufferPointers[2];
-			strides[0] = sizeof(VertexUVNormTanBi);
-			strides[1] = sizeof(instancePositionStructure);
-			offsets[0] = 0;
-			offsets[1] = 0;
-			bufferPointers[0] = geoCubeLight.vertexBuffers[i].Get();
-			//bufferPointers[1] = geoInstanceBuffer.Get();
-			bufferPointers[1] = cubeLightInstanceBuffer.Get();
-			//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
-			context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
-			context->IASetIndexBuffer(geoCubeLight.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
+			// Each vertex is one instance of the VertexPositionColor struct.
+			stride = sizeof(VertexPositionColor);
+			offset = 0;
+			context->IASetVertexBuffers(
+				0,
+				1,
+				m_vertexBuffer.GetAddressOf(),
+				&stride,
+				&offset
+			);
 
-			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
+			context->IASetIndexBuffer(
+				m_indexBuffer.Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
 
-			//context->IASetInputLayout(instanceInputLayout.Get());
-			context->IASetInputLayout(geoInstanceInputLayout.Get());
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			context->IASetInputLayout(m_inputLayout.Get());
 
 			// Attach our vertex shader.
 			context->VSSetShader(
-				geoVertexShader.Get(),
-				nullptr,
-				0
-			);
-			//Attach Hull and Domain Shaders
-			context->HSSetShader(
-				geoHullShader.Get(),
-				nullptr,
-				0
-			);
-			context->DSSetShader(
-				geoDomainShader.Get(),
+				skyboxVertexShader.Get(),
 				nullptr,
 				0
 			);
 
 			// Send the constant buffer to the graphics device.
-			context->DSSetConstantBuffers1(
+			context->VSSetConstantBuffers1(
 				0,
 				1,
 				m_constantBuffer.GetAddressOf(),
@@ -543,148 +588,390 @@ void Sample3DSceneRenderer::Render()
 			context->PSSetShaderResources(0, 1, cubelightShaderResourceView.GetAddressOf());
 			// Attach our pixel shader.
 			context->PSSetShader(
-				geoSkyboxPixelShader.Get(),
+				skyboxPixelShader.Get(),
 				nullptr,
 				0
 			);
 
 			// Draw the objects.
-			context->DrawIndexedInstanced(
-				geoCubeLight.modelMaterialFaceVerts[i].size(),
-				activeGeoCubeInstances,
-				0,
+			context->DrawIndexed(
+				m_indexCount,
 				0,
 				0
 			);
-
-			context->HSSetShader(nullptr, nullptr, 0);
-			context->DSSetShader(nullptr, nullptr, 0);
-			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		}
-	}
+#pragma endregion
+#pragma region GEOSHADERACTIVE
+		else {
+			for (unsigned int i = 0; i < geoCubeLight.materialCount; i++) {
+				//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
+				XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMMatrixIdentity());
+				//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&geoCubeLight.modelMatrix));
+				//context->UpdateSubresource1(geoInstanceBuffer.Get(), 0, NULL, geoCubeLightInstanceList.data(), 0, 0, 0);
+				context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, geoInstanceList.data(), 0, 0, 0);
+				context->UpdateSubresource1(
+					m_constantBuffer.Get(),
+					0,
+					NULL,
+					&m_constantBufferData,
+					0,
+					0,
+					0
+				);
+
+				unsigned int strides[2];
+				unsigned int offsets[2];
+				ID3D11Buffer* bufferPointers[2];
+				strides[0] = sizeof(VertexUVNormTanBi);
+				strides[1] = sizeof(geoInstanceStructure);
+				offsets[0] = 0;
+				offsets[1] = 0;
+				bufferPointers[0] = geoCubeLight.vertexBuffers[i].Get();
+				//bufferPointers[1] = geoInstanceBuffer.Get();
+				bufferPointers[1] = cubeLightInstanceBuffer.Get();
+				//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
+				context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
+				context->IASetIndexBuffer(geoCubeLight.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
+
+				context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
+
+				//context->IASetInputLayout(instanceInputLayout.Get());
+				context->IASetInputLayout(geoInstanceInputLayout.Get());
+
+				// Attach our vertex shader.
+				context->VSSetShader(
+					geoVertexShader.Get(),
+					nullptr,
+					0
+				);
+				//Attach Hull and Domain Shaders
+				context->HSSetShader(
+					geoHullShader.Get(),
+					nullptr,
+					0
+				);
+				context->DSSetShader(
+					geoDomainShader.Get(),
+					nullptr,
+					0
+				);
+
+				// Send the constant buffer to the graphics device.
+				context->DSSetConstantBuffers1(
+					0,
+					1,
+					m_constantBuffer.GetAddressOf(),
+					nullptr,
+					nullptr
+				);
+
+				//Add SRVs
+				context->PSSetShaderResources(0, 1, cubelightShaderResourceView.GetAddressOf());
+				// Attach our pixel shader.
+				context->PSSetShader(
+					geoSkyboxPixelShader.Get(),
+					nullptr,
+					0
+				);
+
+				// Draw the objects.
+				context->DrawIndexedInstanced(
+					geoCubeLight.modelMaterialFaceVerts[i].size(),
+					activeGeoCubeInstances,
+					0,
+					0,
+					0
+				);
+
+				context->HSSetShader(nullptr, nullptr, 0);
+				context->DSSetShader(nullptr, nullptr, 0);
+				context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			}
+		}
 #pragma endregion
 
 #pragma endregion
 
 #pragma region GREENMARBLEDRAW
-	for (unsigned int i = 0; i < greenMarble_loader.materialCount; i++) {
-		//m_constantBufferData.model = greenMarbleModel;
-		XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarble_loader.modelMatrix)));
-		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
-		context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
-		context->UpdateSubresource1(instanceBuffer.Get(), 0, NULL, instanceList.data(), 0, 0, 0);
-		context->UpdateSubresource1(greenMarble_loader.vertexBuffers[i].Get(), 0, NULL, greenMarble_loader.modelMaterialFaceVerts[i].data(), 0, 0, 0);
+		for (unsigned int i = 0; i < greenMarble_loader.materialCount; i++) {
+			//m_constantBufferData.model = greenMarbleModel;
+			XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarble_loader.modelMatrix)));
+			context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+			context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
+			context->UpdateSubresource1(instanceBuffer.Get(), 0, NULL, instanceList.data(), 0, 0, 0);
+			context->UpdateSubresource1(greenMarble_loader.vertexBuffers[i].Get(), 0, NULL, greenMarble_loader.modelMaterialFaceVerts[i].data(), 0, 0, 0);
 
-		unsigned int strides[2];
-		unsigned int offsets[2];
-		ID3D11Buffer* bufferPointers[2];
-		strides[0] = sizeof(VertexUVNormTanBi);
-		strides[1] = sizeof(instancePositionStructure);
-		offsets[0] = 0;
-		offsets[1] = 0;
-		bufferPointers[0] = greenMarble_loader.vertexBuffers[i].Get();
-		bufferPointers[1] = instanceBuffer.Get();
-		//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
-		context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
-		context->IASetIndexBuffer(greenMarble_loader.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
+			unsigned int strides[2];
+			unsigned int offsets[2];
+			ID3D11Buffer* bufferPointers[2];
+			strides[0] = sizeof(VertexUVNormTanBi);
+			strides[1] = sizeof(instancePositionStructure);
+			offsets[0] = 0;
+			offsets[1] = 0;
+			bufferPointers[0] = greenMarble_loader.vertexBuffers[i].Get();
+			bufferPointers[1] = instanceBuffer.Get();
+			//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
+			context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
+			context->IASetIndexBuffer(greenMarble_loader.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
 
 
-		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		context->IASetInputLayout(instanceInputLayout.Get());
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			context->IASetInputLayout(instanceInputLayout.Get());
 
-		// Attach our vertex shader.
-		context->VSSetShader(
-			instanceVertexShader.Get(),
-			nullptr,
-			0
-		);
+			// Attach our vertex shader.
+			context->VSSetShader(
+				instanceVertexShader.Get(),
+				nullptr,
+				0
+			);
 
-		// Send the constant buffer to the graphics device.
-		context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
 
-		ID3D11ShaderResourceView* greenMarbleViews[] = { greenMarbleDiffuseSRV.Get(), greenMarbleNormalSRV.Get(), cubelightShaderResourceView.Get() };
-		context->PSSetShaderResources(0, 3, greenMarbleViews);
+			ID3D11ShaderResourceView* greenMarbleViews[] = { greenMarbleDiffuseSRV.Get(), greenMarbleNormalSRV.Get(), cubelightShaderResourceView.Get() };
+			context->PSSetShaderResources(0, 3, greenMarbleViews);
 
-		//Set samplers
-		ID3D11SamplerState* greenMarbleSamplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
-		context->PSSetSamplers(0, 2, greenMarbleSamplers);
+			//Set samplers
+			ID3D11SamplerState* greenMarbleSamplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
+			context->PSSetSamplers(0, 2, greenMarbleSamplers);
 
-		// Attach our pixel shader.
-		context->PSSetShader(
-			greenMarble_pixelShader.Get(),
-			nullptr,
-			0
-		);
+			// Attach our pixel shader.
+			context->PSSetShader(
+				greenMarble_pixelShader.Get(),
+				nullptr,
+				0
+			);
 
-		//Attach constant buffer
+			//Attach constant buffer
 
-		context->PSSetConstantBuffers(0, 1, lightConstantBuffer.GetAddressOf());
+			context->PSSetConstantBuffers(0, 1, lightConstantBuffer.GetAddressOf());
 
-		// Draw the objects.
-		context->DrawIndexedInstanced(greenMarble_loader.modelMaterialFaceVerts[i].size(), activeInstances, 0, 0, 0);
+			// Draw the objects.
+			context->DrawIndexedInstanced(greenMarble_loader.modelMaterialFaceVerts[i].size(), activeInstances, 0, 0, 0);
 
-	}
+		}
 #pragma endregion
 
 #pragma region PILLARTYPE1DRAW
-	for (unsigned int i = 0; i < pillarType1_loader.materialCount; i++) {
-		//m_constantBufferData.model = greenMarbleModel;
-		//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
-		XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixIdentity());
-		context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
-		context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
-		context->UpdateSubresource1(instanceBuffer.Get(), 0, NULL, pillarType1InstanceList.data(), 0, 0, 0);
+		for (unsigned int i = 0; i < pillarType1_loader.materialCount; i++) {
+			//m_constantBufferData.model = greenMarbleModel;
+			//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
+			XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixIdentity());
+			context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+			context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
+			context->UpdateSubresource1(instanceBuffer.Get(), 0, NULL, pillarType1InstanceList.data(), 0, 0, 0);
 
-		unsigned int strides[2];
-		unsigned int offsets[2];
-		ID3D11Buffer* bufferPointers[2];
-		strides[0] = sizeof(VertexUVNormTanBi);
-		strides[1] = sizeof(instancePositionStructure);
-		offsets[0] = 0;
-		offsets[1] = 0;
-		bufferPointers[0] = pillarType1_loader.vertexBuffers[i].Get();
-		bufferPointers[1] = instanceBuffer.Get();
-		//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
-		context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
-		context->IASetIndexBuffer(pillarType1_loader.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
+			unsigned int strides[2];
+			unsigned int offsets[2];
+			ID3D11Buffer* bufferPointers[2];
+			strides[0] = sizeof(VertexUVNormTanBi);
+			strides[1] = sizeof(instancePositionStructure);
+			offsets[0] = 0;
+			offsets[1] = 0;
+			bufferPointers[0] = pillarType1_loader.vertexBuffers[i].Get();
+			bufferPointers[1] = instanceBuffer.Get();
+			//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
+			context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
+			context->IASetIndexBuffer(pillarType1_loader.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
 
 
-		//context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		context->IASetInputLayout(instanceInputLayout.Get());
+			//context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			context->IASetInputLayout(instanceInputLayout.Get());
 
-		// Attach our vertex shader.
-		context->VSSetShader(
-			instanceVertexShader.Get(),
-			nullptr,
-			0
-		);
+			// Attach our vertex shader.
+			context->VSSetShader(
+				instanceVertexShader.Get(),
+				nullptr,
+				0
+			);
 
-		// Send the constant buffer to the graphics device.
-		context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
 
-		ID3D11ShaderResourceView* pillarType1Views[] = { pillarType1DiffuseSRV.Get(), pillarType1NormalSRV.Get(), cubelightShaderResourceView.Get() };
-		context->PSSetShaderResources(0, 3, pillarType1Views);
+			ID3D11ShaderResourceView* pillarType1Views[] = { pillarType1DiffuseSRV.Get(), pillarType1NormalSRV.Get(), cubelightShaderResourceView.Get() };
+			context->PSSetShaderResources(0, 3, pillarType1Views);
 
-		//Set samplers
-		ID3D11SamplerState* pillarType1Samplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
-		context->PSSetSamplers(0, 2, pillarType1Samplers);
+			//Set samplers
+			ID3D11SamplerState* pillarType1Samplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
+			context->PSSetSamplers(0, 2, pillarType1Samplers);
 
-		// Attach our pixel shader.
-		context->PSSetShader(
-			greenMarble_pixelShader.Get(),
-			nullptr,
-			0
-		);
+			// Attach our pixel shader.
+			context->PSSetShader(
+				greenMarble_pixelShader.Get(),
+				nullptr,
+				0
+			);
 
-		//Attach constant buffer
+			//Attach constant buffer
 
-		context->PSSetConstantBuffers(0, 1, lightConstantBuffer.GetAddressOf());
+			context->PSSetConstantBuffers(0, 1, lightConstantBuffer.GetAddressOf());
 
-		// Draw the objects.
-		context->DrawIndexedInstanced(pillarType1_loader.modelMaterialFaceVerts[i].size(), activePillarType1Instances, 0, 0, 0);
-	}
+			// Draw the objects.
+			context->DrawIndexedInstanced(pillarType1_loader.modelMaterialFaceVerts[i].size(), activePillarType1Instances, 0, 0, 0);
+		}
 #pragma endregion
 
+#pragma region GLASSSPHEREDRAW
+#pragma region NOGEOSHADER
+		if (!geoShaderEnabled) {
+			for (unsigned int i = 0; i < glassSphere.materialCount; i++) {
+				// Prepare the constant buffer to send it to the graphics device.
+				XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&glassSphere.modelMatrix));
+				context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, glassSphereInstanceList.data(), 0, 0, 0);
+				context->UpdateSubresource1(
+					m_constantBuffer.Get(),
+					0,
+					NULL,
+					&m_constantBufferData,
+					0,
+					0,
+					0
+				);
+
+				unsigned int strides[2];
+				unsigned int offsets[2];
+				ID3D11Buffer* bufferPointers[2];
+				strides[0] = sizeof(VertexUVNormTanBi);
+				strides[1] = sizeof(geoInstanceStructure);
+				offsets[0] = 0;
+				offsets[1] = 0;
+				bufferPointers[0] = glassSphere.vertexBuffers[i].Get();
+				//bufferPointers[1] = geoInstanceBuffer.Get();
+				bufferPointers[1] = cubeLightInstanceBuffer.Get();
+				//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
+				context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
+				context->IASetIndexBuffer(glassSphere.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
+
+				context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+				context->IASetInputLayout(instanceMatrixInputLayout.Get());
+
+				// Attach our vertex shader.
+				context->VSSetShader(
+					instanceMatrixVertexShader.Get(),
+					nullptr,
+					0
+				);
+
+				// Send the constant buffer to the graphics device.
+				context->VSSetConstantBuffers1(
+					0,
+					1,
+					m_constantBuffer.GetAddressOf(),
+					nullptr,
+					nullptr
+				);
+
+				//Add SRVs
+				ID3D11ShaderResourceView* glassSphereViews[] = { glassSphereDiffuseSRV.Get(), glassSphereNormalSRV.Get() };
+				context->PSSetShaderResources(0, 2, glassSphereViews);
+				// Attach our pixel shader.
+				context->PSSetShader(
+					glassSpherePixelShader.Get(),
+					nullptr,
+					0
+				);
+
+				// Draw the objects.
+				context->DrawIndexedInstanced(
+					glassSphere.modelMaterialFaceVerts[i].size(),
+					activeGlassSphereInstances,
+					0,
+					0,
+					0
+				);
+			}
+		}
+#pragma endregion
+#pragma region GEOSHADERACTIVE
+		else {
+			for (unsigned int i = 0; i < glassSphere.materialCount; i++) {
+				XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&glassSphere.modelMatrix));
+				//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&geoCubeLight.modelMatrix));
+				//context->UpdateSubresource1(geoInstanceBuffer.Get(), 0, NULL, geoCubeLightInstanceList.data(), 0, 0, 0);
+				context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, glassSphereInstanceList.data(), 0, 0, 0);
+				context->UpdateSubresource1(
+					m_constantBuffer.Get(),
+					0,
+					NULL,
+					&m_constantBufferData,
+					0,
+					0,
+					0
+				);
+
+				unsigned int strides[2];
+				unsigned int offsets[2];
+				ID3D11Buffer* bufferPointers[2];
+				strides[0] = sizeof(VertexUVNormTanBi);
+				strides[1] = sizeof(geoInstanceStructure);
+				offsets[0] = 0;
+				offsets[1] = 0;
+				bufferPointers[0] = glassSphere.vertexBuffers[i].Get();
+				//bufferPointers[1] = geoInstanceBuffer.Get();
+				bufferPointers[1] = cubeLightInstanceBuffer.Get();
+				//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
+				context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
+				context->IASetIndexBuffer(glassSphere.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
+
+				context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
+
+				context->IASetInputLayout(geoInstanceInputLayout.Get());
+
+				// Attach our vertex shader.
+				context->VSSetShader(
+					geoVertexShader.Get(),
+					nullptr,
+					0
+				);
+				//Attach Hull and Domain Shaders
+				context->HSSetShader(
+					geoHullShader.Get(),
+					nullptr,
+					0
+				);
+				context->DSSetShader(
+					phongDomainShader.Get(),
+					nullptr,
+					0
+				);
+
+				// Send the constant buffer to the graphics device.
+				context->DSSetConstantBuffers1(
+					0,
+					1,
+					m_constantBuffer.GetAddressOf(),
+					nullptr,
+					nullptr
+				);
+
+				//Add SRVs
+				ID3D11ShaderResourceView* glassSphereViews[] = { glassSphereDiffuseSRV.Get(), glassSphereNormalSRV.Get() };
+				context->PSSetShaderResources(0, 2, glassSphereViews);
+				// Attach our pixel shader.
+				context->PSSetShader(
+					glassSpherePixelShader.Get(),
+					nullptr,
+					0
+				);
+
+				// Draw the objects.
+				context->DrawIndexedInstanced(
+					glassSphere.modelMaterialFaceVerts[i].size(),
+					activeGlassSphereInstances,
+					0,
+					0,
+					0
+				);
+
+				context->HSSetShader(nullptr, nullptr, 0);
+				context->DSSetShader(nullptr, nullptr, 0);
+				context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			}
+		}
+#pragma endregion
+#pragma endregion
+	}
 }
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources()
@@ -706,6 +993,30 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	m_deviceResources->GetD3DDevice()->CreateRasterizerState(&rasterizerDesc, m_rasterizerState.GetAddressOf());
 	rasterizerDesc.FillMode = D3D11_FILL_MODE::D3D11_FILL_WIREFRAME;
 	m_deviceResources->GetD3DDevice()->CreateRasterizerState(&rasterizerDesc, wireframeRasterState.GetAddressOf());
+#pragma endregion
+
+#pragma region BLENDSTATE
+	D3D11_BLEND_DESC blendDesc;
+	blendDesc.AlphaToCoverageEnable = false;
+	blendDesc.IndependentBlendEnable = false;
+	blendDesc.RenderTarget[0].BlendEnable = TRUE;
+	//blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	//blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_ZERO;
+	blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	//blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
+	blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	//blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_SRC_ALPHA;
+	blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	//blendDesc.RenderTarget[0].RenderTargetWriteMask = 0x0f;
+
+	DX::ThrowIfFailed(
+		m_deviceResources->GetD3DDevice()->CreateBlendState(&blendDesc, transparencyBlendState.GetAddressOf())
+	);
+	m_deviceResources->GetD3DDeviceContext()->OMSetBlendState(transparencyBlendState.Get(), NULL, 0xffffffff);
 #pragma endregion
 
 #pragma region THREADLOADING
@@ -750,6 +1061,19 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		L"Assets\\Pillar\\SeemlessMarble1Normal.dds",
 		(ID3D11Resource**)pillarType1NormalTexture.GetAddressOf(),
 		pillarType1NormalSRV.GetAddressOf(),0);
+
+	//glassSphere
+	std::thread glassSphereDiffuseThread(
+		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
+		L"Assets\\7x7sphere\\glass03.dds",
+		(ID3D11Resource**)glassSphereDiffuseTexture.GetAddressOf(),
+		glassSphereDiffuseSRV.GetAddressOf(), 0);
+	std::thread glassSphereNormalThread(
+		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
+		L"Assets\\7x7sphere\\glass03_55bias.dds",
+		(ID3D11Resource**)glassSphereNormalTexture.GetAddressOf(),
+		glassSphereNormalSRV.GetAddressOf(), 0);
+
 
 #pragma endregion
 
@@ -1082,6 +1406,45 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	});
 #pragma endregion
 
+#pragma region INSTANCEMATRIXVERTEXSHADER
+	auto loadInstanceMatrixVSTask = DX::ReadDataAsync(L"InstanceMatrixVertexShader.cso");
+
+	// After the vertex shader file is loaded, create the shader and input layout.
+	auto createInstanceMatrixVSTask = loadInstanceMatrixVSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateVertexShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				instanceMatrixVertexShader.GetAddressOf()
+			)
+		);
+
+		static const D3D11_INPUT_ELEMENT_DESC instanceMatrixVertexDesc[] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT , D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT , D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT ,D3D11_INPUT_PER_VERTEX_DATA,0 },
+			{ "TANGENT",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA,0 },
+			{ "BINORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA,0 },
+			{ "INSTANCE",0,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+			{ "INSTANCE",1,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+			{ "INSTANCE",2,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+			{ "INSTANCE",3,DXGI_FORMAT_R32G32B32A32_FLOAT,1,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_INSTANCE_DATA,1 },
+		};
+
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateInputLayout(
+				instanceMatrixVertexDesc,
+				ARRAYSIZE(instanceMatrixVertexDesc),
+				&fileData[0],
+				fileData.size(),
+				instanceMatrixInputLayout.GetAddressOf()
+			)
+		);
+	});
+#pragma endregion
+
 #pragma region GREENMARBLE
 	bool groundMarbleLoaded = greenMarble_loader.loadMaterialOBJ(m_deviceResources, "Assets\\CubeLight\\groundQuad.obj");
 
@@ -1097,7 +1460,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		auto loadGreenMarblePSTask = DX::ReadDataAsync(L"GreenMarblePixelShader.cso");
 
 		// After the pixel shader file is loaded, create the shader and constant buffer.
-		auto createGrenMarblePSTask = loadGreenMarblePSTask.then([this](const std::vector<byte>& fileData) {
+		auto createGreenMarblePSTask = loadGreenMarblePSTask.then([this](const std::vector<byte>& fileData) {
 			DX::ThrowIfFailed(
 				m_deviceResources->GetD3DDevice()->CreatePixelShader(
 					&fileData[0],
@@ -1149,6 +1512,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	instanceBufferDesc.ByteWidth = sizeof(geoInstanceStructure)*geoInstanceCount;
 	m_deviceResources->GetD3DDevice()->CreateBuffer(&instanceBufferDesc, &instanceData, cubeLightInstanceBuffer.GetAddressOf());
 
+	glassSphereInstanceList.resize(geoInstanceCount);
 #pragma endregion
 
 #pragma region PILLARTYPE1
@@ -1282,10 +1646,45 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 			)
 		);
 	});
+
+
+	auto loadPhongDSTask = DX::ReadDataAsync(L"PhongDomainShader.cso");\
+
+	auto createPhongDSTask = loadPhongDSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateDomainShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				phongDomainShader.GetAddressOf()
+			)
+		);
+	});
+
 #pragma endregion
 
 #pragma region GEOCUBELIGHT
 	bool geoCubeLightLoaded = geoCubeLight.loadMaterialOBJ(m_deviceResources, "Assets\\halfUnitCube\\halfUnitCube.obj");
+#pragma endregion
+
+#pragma region GLASSSPHERE
+	bool glassSphereLoaded = glassSphere.loadMaterialOBJ(m_deviceResources, "Assets\\7x7sphere\\glassSphere.obj");
+	XMStoreFloat4x4(&glassSphere.modelMatrix, XMMatrixTranspose(XMMatrixTranslation(0.0f, 2.0f, 0.0f)));
+
+	if (glassSphereLoaded) {
+		auto loadGlassSpherePSTask = DX::ReadDataAsync(L"glassSpherePixelShader.cso");
+		// After the pixel shader file is loaded, create the shader and constant buffer.
+		auto createGlassSpherePSTask = loadGlassSpherePSTask.then([this](const std::vector<byte>& fileData) {
+			DX::ThrowIfFailed(
+				m_deviceResources->GetD3DDevice()->CreatePixelShader(
+					&fileData[0],
+					fileData.size(),
+					nullptr,
+					glassSpherePixelShader.GetAddressOf()
+				)
+			);
+		});
+	}
 #pragma endregion
 
 #pragma region THREADJOINING
@@ -1295,6 +1694,8 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	greenMarbleNormalThread.join();
 	pillarType1DiffuseThread.join();
 	pillarType1NormalThread.join();
+	glassSphereDiffuseThread.join();
+	glassSphereNormalThread.join();
 #pragma endregion
 
 	// Once the cube is loaded, the object is ready to be rendered.
@@ -1319,6 +1720,7 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	wireframeRasterState.Reset();
 	linearSamplerState.Reset();
 	anisotropicSamplerState.Reset();
+	transparencyBlendState.Reset();
 
 	//Skybox cleanup
 	skyboxTexture.Reset();
@@ -1351,6 +1753,8 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	geoInstanceList.clear();
 	instanceInputLayout.Reset();
 	geoInstanceInputLayout.Reset();
+	instanceMatrixVertexShader.Reset();
+	instanceMatrixInputLayout.Reset();
 
 	//Pillar type 1
 	pillarType1DiffuseSRV.Reset();
@@ -1365,9 +1769,20 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	geoHullShader.Reset();
 	geoDomainShader.Reset();
 
+	phongDomainShader.Reset();
+
 	//GeoCubeLight
 	geoCubeLight.~ModelLoader();
 	geoInstanceBuffer.Reset();
 	geoCubeLightInstanceList.clear();
 	cubeLightInstanceBuffer.Reset();
+
+	//glassSphere
+	glassSphere.~ModelLoader();
+	glassSphereDiffuseSRV.Reset();
+	glassSphereNormalSRV.Reset();
+	glassSphereDiffuseTexture.Reset();
+	glassSphereNormalTexture.Reset();
+	glassSpherePixelShader.Reset();
+	glassSphereInstanceList.clear();
 }

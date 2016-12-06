@@ -415,6 +415,12 @@ void DX::DeviceResources::CreateWindowSizeDependentResources()
 		m_d3dRenderTargetSize.Width,
 		m_d3dRenderTargetSize.Height
 		);
+	m_screenViewport1 = CD3D11_VIEWPORT(
+		m_d3dRenderTargetSize.Width*0.7f,
+		0.0f,
+		m_d3dRenderTargetSize.Width*0.3f,
+		m_d3dRenderTargetSize.Height*0.3f
+	);
 
 	m_d3dContext->RSSetViewports(1, &m_screenViewport);
 

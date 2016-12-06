@@ -18,6 +18,8 @@ struct PixelShaderInput
 // A pass-through function for the (interpolated) color data.
 float4 main(PixelShaderInput input) : SV_TARGET
 {
-	return boxTexture.Sample(LinearSampler,input.skyPos);
+	float4 color = boxTexture.Sample(LinearSampler,input.skyPos);
+	return float4(color.xyz, 1.0f);
+	//return boxTexture.Sample(LinearSampler,input.skyPos);
 	//return boxTexture.Sample(LinearSampler,(float3)input.norm);
 }

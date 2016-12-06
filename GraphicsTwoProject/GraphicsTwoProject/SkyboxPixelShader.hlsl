@@ -14,5 +14,8 @@ struct PixelShaderInput
 float4 main(PixelShaderInput input) : SV_TARGET
 {
 	//return float4(input.color, 1.0f);
-	return boxTexture.Sample(LinearSampler, input.color);
+	float4 color = boxTexture.Sample(LinearSampler, input.color);
+	return float4(color.xyz, 1.0f);
+	
+	//return boxTexture.Sample(LinearSampler, input.color);
 }
