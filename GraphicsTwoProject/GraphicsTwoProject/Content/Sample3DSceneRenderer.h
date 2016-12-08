@@ -145,5 +145,24 @@ namespace GraphicsTwoProject
 		Microsoft::WRL::ComPtr<ID3D11BlendState>			transparencyBlendState;
 
 		bool instanceMatrixSortFunction(geoInstanceStructure const &a, geoInstanceStructure const &b);
+
+		//Square Pool
+		ModelLoader squarePool;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>				squarePoolDiffuseTexture;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>				squarePoolNormalTexture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	squarePoolDiffuseSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	squarePoolNormalSRV;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>				squarePoolMossDiffuseTexture;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>				squarePoolMossNormalTexture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	squarePoolMossDiffuseSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	squarePoolMossNormalSRV;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>			squarePoolPixelShader;
+		std::vector<geoInstanceStructure>					squarePoolInstanceList;
+		unsigned int activeSquarePoolInstances;
+		ModelLoader squarePoolWater;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>				squarePoolWaterDiffuseTexture;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>				squarePoolWaterNormalTexture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	squarePoolWaterDiffuseSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	squarePoolWaterNormalSRV;
 	};
 }

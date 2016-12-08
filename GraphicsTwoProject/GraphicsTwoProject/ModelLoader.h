@@ -21,6 +21,7 @@ public:
 	//bool loadMaterialOBJ(const char *path, std::vector<DirectX::XMFLOAT3> &out_vertices, std::vector<DirectX::XMFLOAT2> &out_uvs, std::vector<DirectX::XMFLOAT3> &out_normals);
 
 	void calculateModelVectors();
+	void calculateModelVectorsWithFaceNorms();
 	void calculateTangentBinormal(GraphicsTwoProject::VertexUVNormTanBi *vert1, GraphicsTwoProject::VertexUVNormTanBi *vert2, GraphicsTwoProject::VertexUVNormTanBi *vert3);
 	void calculateNormal(GraphicsTwoProject::VertexUVNormTanBi *vert1);
 
@@ -51,7 +52,10 @@ public:
 	std::vector<DirectX::XMFLOAT2> uvs;
 	std::vector<DirectX::XMFLOAT3> normals;
 	std::vector<std::vector<unsigned short>> indices;
+	
 	bool loadMaterialOBJ(std::shared_ptr<DX::DeviceResources> deviceResources, const char* path);
+	bool loadMaterialOBJWithFaceNorms(std::shared_ptr<DX::DeviceResources> deviceResources, const char* path);
+	
 	std::vector<GraphicsTwoProject::VertexUVNormTanBi> modelFaces;
 	std::vector<std::vector<GraphicsTwoProject::VertexUVNormTanBi>> modelMaterialFaceVerts;
 };

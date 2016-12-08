@@ -80,6 +80,9 @@
     <Filter Include="Content\Domain Shaders">
       <UniqueIdentifier>{48cde9b4-554e-43fe-b64b-d171854a3750}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Assets\squarePool">
+      <UniqueIdentifier>{82bc1521-4b23-4eec-a012-576a34e7babe}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
@@ -158,6 +161,33 @@
     <None Include="Assets\7x7sphere\glassSphere.obj">
       <Filter>Assets\7x7sphere</Filter>
     </None>
+    <None Include="Assets\squarePool\poolTile.dds">
+      <Filter>Assets\squarePool</Filter>
+    </None>
+    <None Include="Assets\squarePool\poolTileNormal.dds">
+      <Filter>Assets\squarePool</Filter>
+    </None>
+    <None Include="Assets\squarePool\seemlessMoss.dds">
+      <Filter>Assets\squarePool</Filter>
+    </None>
+    <None Include="Assets\squarePool\seemlessMossNormal.dds">
+      <Filter>Assets\squarePool</Filter>
+    </None>
+    <None Include="Assets\squarePool\squarePool.obj">
+      <Filter>Assets\squarePool</Filter>
+    </None>
+    <None Include="Assets\squarePool\squarePoolFaceNorms.obj">
+      <Filter>Assets\squarePool</Filter>
+    </None>
+    <None Include="Assets\squarePool\seamlessWater.dds">
+      <Filter>Assets\squarePool</Filter>
+    </None>
+    <None Include="Assets\squarePool\seamlessWaterNormal.dds">
+      <Filter>Assets\squarePool</Filter>
+    </None>
+    <None Include="Assets\squarePool\squarePoolWater.obj">
+      <Filter>Assets\squarePool</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="GeoVertexShader.hlsl">
@@ -206,6 +236,9 @@
       <Filter>Content\Vertex Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Content\SamplePixelShader.hlsl">
+      <Filter>Content\Pixel Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="SquarePoolPixelShader.hlsl">
       <Filter>Content\Pixel Shaders</Filter>
     </FxCompile>
   </ItemGroup>
