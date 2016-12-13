@@ -164,5 +164,9 @@ namespace GraphicsTwoProject
 		Microsoft::WRL::ComPtr<ID3D11Texture2D>				squarePoolWaterNormalTexture;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	squarePoolWaterDiffuseSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	squarePoolWaterNormalSRV;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>			squarePoolWaterPixelShader;
+		float poolWaterUOffset = 0.001f;
+		float poolWaterVOffset = 0.0001f;
+		unsigned int poolWaterOffsetTimer = 200;
 	};
 }

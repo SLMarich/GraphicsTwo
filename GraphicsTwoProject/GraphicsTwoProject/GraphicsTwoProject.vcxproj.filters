@@ -241,5 +241,8 @@
     <FxCompile Include="SquarePoolPixelShader.hlsl">
       <Filter>Content\Pixel Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="SquarePoolWaterPixelShader.hlsl">
+      <Filter>Content\Pixel Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

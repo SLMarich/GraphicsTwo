@@ -377,6 +377,19 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	//XMStoreFloat4x4(&squarePoolInstanceList[0].matrix, XMMatrixTranspose(XMMatrixTranslation(-41.0f, -4.0f, 0.0f)));
 	XMStoreFloat4x4(&squarePoolInstanceList[0].matrix, XMMatrixTranspose(XMMatrixTranslation(0.0f, -4.0f, 0.0f)));
 #pragma endregion
+#pragma region POOLWATERUPDATES
+	poolWaterOffsetTimer--;
+	if (!poolWaterOffsetTimer) {
+		poolWaterVOffset = -poolWaterVOffset;
+		poolWaterOffsetTimer = 200;
+	}
+	for (unsigned int i = 0; i < squarePoolWater.materialCount; i++) {
+		for (unsigned int j = 0; j < squarePoolWater.modelMaterialFaceVerts[i].size(); j++) {
+			squarePoolWater.modelMaterialFaceVerts[i][j].uv.x += poolWaterUOffset;
+			squarePoolWater.modelMaterialFaceVerts[i][j].uv.y += poolWaterVOffset;
+		}
+	}
+#pragma endregion
 #pragma endregion
 
 #pragma region GEOMETRYSHADERUPDATES
@@ -829,6 +842,127 @@ void Sample3DSceneRenderer::Render()
 		}
 #pragma endregion
 
+#pragma region SQUAREPOOLDRAW
+#pragma region SQUAREPOOLTILES
+		for (unsigned int i = 0; i < squarePool.materialCount; i++) {
+			//m_constantBufferData.model = greenMarbleModel;
+			//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
+			XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&squarePool.modelMatrix));
+			context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+			context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
+			context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, squarePoolInstanceList.data(), 0, 0, 0);
+
+			unsigned int strides[2];
+			unsigned int offsets[2];
+			ID3D11Buffer* bufferPointers[2];
+			strides[0] = sizeof(VertexUVNormTanBi);
+			strides[1] = sizeof(geoInstanceStructure);
+			offsets[0] = 0;
+			offsets[1] = 0;
+			bufferPointers[0] = squarePool.vertexBuffers[i].Get();
+			bufferPointers[1] = cubeLightInstanceBuffer.Get();
+			//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
+			context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
+			context->IASetIndexBuffer(squarePool.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
+
+
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			context->IASetInputLayout(instanceMatrixInputLayout.Get());
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				instanceMatrixVertexShader.Get(),
+				nullptr,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+
+			ID3D11ShaderResourceView* squarePoolViews[] = { squarePoolDiffuseSRV.Get(), squarePoolNormalSRV.Get(), cubelightShaderResourceView.Get(), squarePoolMossDiffuseSRV.Get(), squarePoolMossNormalSRV.Get() };
+			context->PSSetShaderResources(0, 5, squarePoolViews);
+
+			//Set samplers
+			ID3D11SamplerState* squarePoolSamplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
+			context->PSSetSamplers(0, 2, squarePoolSamplers);
+
+			// Attach our pixel shader.
+			context->PSSetShader(
+				squarePoolPixelShader.Get(),
+				nullptr,
+				0
+			);
+
+			//Attach constant buffer
+
+			context->PSSetConstantBuffers(0, 1, lightConstantBuffer.GetAddressOf());
+
+			// Draw the objects.
+			context->DrawIndexedInstanced(squarePool.modelMaterialFaceVerts[i].size(), activeSquarePoolInstances, 0, 0, 0);
+		}
+#pragma endregion
+#pragma region SQUAREPOOLWATER
+		for (unsigned int i = 0; i < squarePoolWater.materialCount; i++) {
+			//m_constantBufferData.model = greenMarbleModel;
+			//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
+			XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&squarePoolWater.modelMatrix));
+			context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+			context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
+			context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, squarePoolInstanceList.data(), 0, 0, 0);
+			context->UpdateSubresource1(squarePoolWater.vertexBuffers[i].Get(), 0, NULL, squarePoolWater.modelMaterialFaceVerts[i].data(), 0, 0, 0);
+
+			unsigned int strides[2];
+			unsigned int offsets[2];
+			ID3D11Buffer* bufferPointers[2];
+			strides[0] = sizeof(VertexUVNormTanBi);
+			strides[1] = sizeof(geoInstanceStructure);
+			offsets[0] = 0;
+			offsets[1] = 0;
+			bufferPointers[0] = squarePoolWater.vertexBuffers[i].Get();
+			bufferPointers[1] = cubeLightInstanceBuffer.Get();
+			//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
+			context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
+			context->IASetIndexBuffer(squarePoolWater.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
+
+
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			context->IASetInputLayout(instanceMatrixInputLayout.Get());
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				instanceMatrixVertexShader.Get(),
+				nullptr,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
+
+			ID3D11ShaderResourceView* squarePoolWaterViews[] = { squarePoolWaterDiffuseSRV.Get(), squarePoolWaterNormalSRV.Get() };/*, cubelightShaderResourceView.Get(), squarePoolWaterDiffuseSRV.Get(), squarePoolWaterNormalSRV.Get() };*/
+			context->PSSetShaderResources(0, 2, squarePoolWaterViews);
+
+			//Set samplers
+			ID3D11SamplerState* squarePoolWaterSamplers[] = { anisotropicSamplerState.Get() };//, linearSamplerState.Get() };
+			context->PSSetSamplers(0, 1, squarePoolWaterSamplers);
+
+			// Attach our pixel shader.
+			context->PSSetShader(
+				//squarePoolPixelShader.Get(),
+				squarePoolWaterPixelShader.Get(),
+				nullptr,
+				0
+			);
+
+			//Attach constant buffer
+
+			context->PSSetConstantBuffers(0, 1, lightConstantBuffer.GetAddressOf());
+
+			// Draw the objects.
+			context->DrawIndexedInstanced(squarePoolWater.modelMaterialFaceVerts[i].size(), activeSquarePoolInstances, 0, 0, 0);
+		}
+#pragma endregion
+#pragma endregion
+
 #pragma region GLASSSPHEREDRAW
 #pragma region NOGEOSHADER
 		if (!geoShaderEnabled) {
@@ -990,125 +1124,6 @@ void Sample3DSceneRenderer::Render()
 #pragma endregion
 #pragma endregion
 
-#pragma region SQUAREPOOLDRAW
-#pragma region SQUAREPOOLTILES
-		for (unsigned int i = 0; i < squarePool.materialCount; i++) {
-			//m_constantBufferData.model = greenMarbleModel;
-			//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
-			XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&squarePool.modelMatrix));
-			context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
-			context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
-			context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, squarePoolInstanceList.data(), 0, 0, 0);
-
-			unsigned int strides[2];
-			unsigned int offsets[2];
-			ID3D11Buffer* bufferPointers[2];
-			strides[0] = sizeof(VertexUVNormTanBi);
-			strides[1] = sizeof(geoInstanceStructure);
-			offsets[0] = 0;
-			offsets[1] = 0;
-			bufferPointers[0] = squarePool.vertexBuffers[i].Get();
-			bufferPointers[1] = cubeLightInstanceBuffer.Get();
-			//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
-			context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
-			context->IASetIndexBuffer(squarePool.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
-
-
-			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			context->IASetInputLayout(instanceMatrixInputLayout.Get());
-
-			// Attach our vertex shader.
-			context->VSSetShader(
-				instanceMatrixVertexShader.Get(),
-				nullptr,
-				0
-			);
-
-			// Send the constant buffer to the graphics device.
-			context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
-
-			ID3D11ShaderResourceView* squarePoolViews[] = { squarePoolDiffuseSRV.Get(), squarePoolNormalSRV.Get(), cubelightShaderResourceView.Get(), squarePoolMossDiffuseSRV.Get(), squarePoolMossNormalSRV.Get() };
-			context->PSSetShaderResources(0, 5, squarePoolViews);
-
-			//Set samplers
-			ID3D11SamplerState* squarePoolSamplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
-			context->PSSetSamplers(0, 2, squarePoolSamplers);
-
-			// Attach our pixel shader.
-			context->PSSetShader(
-				squarePoolPixelShader.Get(),
-				nullptr,
-				0
-			);
-
-			//Attach constant buffer
-
-			context->PSSetConstantBuffers(0, 1, lightConstantBuffer.GetAddressOf());
-
-			// Draw the objects.
-			context->DrawIndexedInstanced(squarePool.modelMaterialFaceVerts[i].size(), activeSquarePoolInstances, 0, 0, 0);
-		}
-#pragma endregion
-#pragma region SQUAREPOOLWATER
-		for (unsigned int i = 0; i < squarePoolWater.materialCount; i++) {
-			//m_constantBufferData.model = greenMarbleModel;
-			//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
-			XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&squarePoolWater.modelMatrix));
-			context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
-			context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
-			context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, squarePoolInstanceList.data(), 0, 0, 0);
-
-			unsigned int strides[2];
-			unsigned int offsets[2];
-			ID3D11Buffer* bufferPointers[2];
-			strides[0] = sizeof(VertexUVNormTanBi);
-			strides[1] = sizeof(geoInstanceStructure);
-			offsets[0] = 0;
-			offsets[1] = 0;
-			bufferPointers[0] = squarePoolWater.vertexBuffers[i].Get();
-			bufferPointers[1] = cubeLightInstanceBuffer.Get();
-			//context->IASetVertexBuffers(0, 1, plain_loader.vertexBuffers[i].GetAddressOf(), &stride, &offset);
-			context->IASetVertexBuffers(0, 2, bufferPointers, strides, offsets);
-			context->IASetIndexBuffer(squarePoolWater.indexBuffers[i].Get(), DXGI_FORMAT_R16_UINT/*Each index is one 16-bit unsigned short.*/, 0);
-
-
-			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			context->IASetInputLayout(instanceMatrixInputLayout.Get());
-
-			// Attach our vertex shader.
-			context->VSSetShader(
-				instanceMatrixVertexShader.Get(),
-				nullptr,
-				0
-			);
-
-			// Send the constant buffer to the graphics device.
-			context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
-
-			ID3D11ShaderResourceView* squarePoolWaterViews[] = { squarePoolWaterDiffuseSRV.Get(), squarePoolWaterNormalSRV.Get() };/*, cubelightShaderResourceView.Get(), squarePoolWaterDiffuseSRV.Get(), squarePoolWaterNormalSRV.Get() };*/
-			context->PSSetShaderResources(0, 2, squarePoolWaterViews);
-
-			//Set samplers
-			ID3D11SamplerState* squarePoolWaterSamplers[] = { anisotropicSamplerState.Get() };//, linearSamplerState.Get() };
-			context->PSSetSamplers(0, 1, squarePoolWaterSamplers);
-
-			// Attach our pixel shader.
-			context->PSSetShader(
-				//squarePoolPixelShader.Get(),
-				glassSpherePixelShader.Get(),
-				nullptr,
-				0
-			);
-
-			//Attach constant buffer
-
-			context->PSSetConstantBuffers(0, 1, lightConstantBuffer.GetAddressOf());
-
-			// Draw the objects.
-			//context->DrawIndexedInstanced(squarePoolWater.modelMaterialFaceVerts[i].size(), activeSquarePoolInstances, 0, 0, 0);
-		}
-#pragma endregion
-#pragma endregion
 	}
 }
 
@@ -1166,7 +1181,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		L"Assets\\SkyboxOcean.dds",
 		skyboxTexture.GetAddressOf(),
 		skyboxShaderResourceView.GetAddressOf(), 0);
-
+	
 	//CubeLight Cubemap
 	std::thread cubeLightDiffuseThread(
 		CreateDDSTextureFromFile, m_deviceResources->GetD3DDevice(),
@@ -1270,13 +1285,13 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	anisotropicSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 	anisotropicSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 	anisotropicSamplerDesc.MipLODBias = 0.0f;
-	anisotropicSamplerDesc.MaxAnisotropy = 1;
+	anisotropicSamplerDesc.MaxAnisotropy = 16;
 	anisotropicSamplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 	anisotropicSamplerDesc.BorderColor[0] = 0;
 	anisotropicSamplerDesc.BorderColor[1] = 0;
 	anisotropicSamplerDesc.BorderColor[2] = 0;
 	anisotropicSamplerDesc.BorderColor[3] = 0;
-	anisotropicSamplerDesc.MinLOD = 0;
+	anisotropicSamplerDesc.MinLOD = -D3D11_FLOAT32_MAX;
 	anisotropicSamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
 	HRESULT anisotropicSamplerCreated = m_deviceResources->GetD3DDevice()->CreateSamplerState(&anisotropicSamplerDesc, &anisotropicSamplerState);
@@ -1876,6 +1891,19 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		});
 	}
 	bool squarePoolWaterLoaded = squarePoolWater.loadMaterialOBJ(m_deviceResources, "Assets\\squarePool\\squarePoolWater.obj");
+	if (squarePoolWaterLoaded) {
+		auto loadSquarePoolWaterPSTask = DX::ReadDataAsync(L"SquarePoolWaterPixelShader.cso");
+		auto createSquarePoolWaterPSTask = loadSquarePoolWaterPSTask.then([this](const std::vector<byte>& fileData) {
+			DX::ThrowIfFailed(
+				m_deviceResources->GetD3DDevice()->CreatePixelShader(
+					&fileData[0],
+					fileData.size(),
+					nullptr,
+					squarePoolWaterPixelShader.GetAddressOf()
+				)
+			);
+		});
+	}
 #pragma endregion
 
 #pragma region THREADJOINING
@@ -1893,6 +1921,11 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	squarePoolMossNormalThread.join();
 	squarePoolWaterDiffuseThread.join();
 	squarePoolWaterNormalThread.join();
+#pragma endregion
+
+#pragma region MIPGENERATION
+	//m_deviceResources->GetD3DDeviceContext()->GenerateMips(greenMarbleDiffuseSRV.Get());
+	//m_deviceResources->GetD3DDeviceContext()->GenerateMips(greenMarbleNormalSRV.Get());
 #pragma endregion
 
 	// Once the cube is loaded, the object is ready to be rendered.
@@ -1999,4 +2032,5 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	squarePoolWaterNormalSRV.Reset();
 	squarePoolWaterDiffuseTexture.Reset();
 	squarePoolWaterNormalTexture.Reset();
+	squarePoolWaterPixelShader.Reset();
 }
