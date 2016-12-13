@@ -168,5 +168,15 @@ namespace GraphicsTwoProject
 		float poolWaterUOffset = 0.001f;
 		float poolWaterVOffset = 0.0001f;
 		unsigned int poolWaterOffsetTimer = 200;
+
+		//Render to Textures for the water reflection and refraction
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>				squarePoolWaterRefractionTexture;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>				squarePoolWaterReflectionTexture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	squarePoolWaterReflectionSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	squarePoolWaterRefractionSRV;
+		Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		squarePoolWaterRefractionRTV;
+		Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		squarePoolWaterReflectionRTV;
+		Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		baseRTV;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView>		baseDSV;
 	};
 }

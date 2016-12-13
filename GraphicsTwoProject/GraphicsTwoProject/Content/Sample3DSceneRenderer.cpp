@@ -453,11 +453,31 @@ void Sample3DSceneRenderer::Render()
 	views[1] = m_deviceResources->GetScreenViewport1();
 	for (unsigned int viewTracker = 0; viewTracker < 2; viewTracker++) {
 		m_deviceResources->GetD3DDeviceContext()->RSSetViewports(1, &views[viewTracker]);
+		//if (viewTracker == 3) {
+		//	//Set camera view
+		//	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, XMLoadFloat4x4(&camera))));
+		//	//Set camera projection
+		//	XMStoreFloat4x4(&m_constantBufferData.projection, XMLoadFloat4x4(&projection));
+		//	m_deviceResources->GetD3DDeviceContext()->OMSetRenderTargets(1, squarePoolWaterRefractionRTV.GetAddressOf(), baseDSV.Get());
+		//}
+		//if (viewTracker == 4) {
+		//	//Set camera view
+		//	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, XMLoadFloat4x4(&camera))));
+		//	//Set camera projection
+		//	XMStoreFloat4x4(&m_constantBufferData.projection, XMLoadFloat4x4(&projection));
+		//	m_deviceResources->GetD3DDeviceContext()->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.0f, 0);
+		//	m_deviceResources->GetD3DDeviceContext()->OMSetRenderTargets(1, squarePoolWaterReflectionRTV.GetAddressOf(), baseDSV.Get());
+		//}
 		if (viewTracker == 0) {
 			//Set camera view
 			XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, XMLoadFloat4x4(&camera))));
 			//Set camera projection
 			XMStoreFloat4x4(&m_constantBufferData.projection, XMLoadFloat4x4(&projection));
+			
+			//For reflections
+			//ID3D11RenderTargetView* rtvs[2];
+			//m_deviceResources->GetD3DDeviceContext()->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.0f, 0);
+			//m_deviceResources->GetD3DDeviceContext()->OMSetRenderTargets(1, baseRTV.GetAddressOf(), baseDSV.Get());
 		}
 #pragma region STATESETUP
 		//Set rasterizer state
@@ -938,12 +958,13 @@ void Sample3DSceneRenderer::Render()
 			// Send the constant buffer to the graphics device.
 			context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
 
-			ID3D11ShaderResourceView* squarePoolWaterViews[] = { squarePoolWaterDiffuseSRV.Get(), squarePoolWaterNormalSRV.Get() };/*, cubelightShaderResourceView.Get(), squarePoolWaterDiffuseSRV.Get(), squarePoolWaterNormalSRV.Get() };*/
-			context->PSSetShaderResources(0, 2, squarePoolWaterViews);
+			//ID3D11ShaderResourceView* squarePoolWaterViews[] = { squarePoolWaterDiffuseSRV.Get(), squarePoolWaterNormalSRV.Get() };/*, cubelightShaderResourceView.Get(), squarePoolWaterDiffuseSRV.Get(), squarePoolWaterNormalSRV.Get() };*/
+			ID3D11ShaderResourceView* squarePoolWaterViews[] = { squarePoolWaterDiffuseSRV.Get(), squarePoolWaterNormalSRV.Get(), cubelightShaderResourceView.Get() };// squarePoolWaterDiffuseSRV.Get(), squarePoolWaterNormalSRV.Get()};
+			context->PSSetShaderResources(0, 3, squarePoolWaterViews);
 
 			//Set samplers
-			ID3D11SamplerState* squarePoolWaterSamplers[] = { anisotropicSamplerState.Get() };//, linearSamplerState.Get() };
-			context->PSSetSamplers(0, 1, squarePoolWaterSamplers);
+			ID3D11SamplerState* squarePoolWaterSamplers[] = { anisotropicSamplerState.Get(), linearSamplerState.Get() };
+			context->PSSetSamplers(0, 2, squarePoolWaterSamplers);
 
 			// Attach our pixel shader.
 			context->PSSetShader(
@@ -1285,7 +1306,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	anisotropicSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 	anisotropicSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 	anisotropicSamplerDesc.MipLODBias = 0.0f;
-	anisotropicSamplerDesc.MaxAnisotropy = 16;
+	anisotropicSamplerDesc.MaxAnisotropy = 8;
 	anisotropicSamplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 	anisotropicSamplerDesc.BorderColor[0] = 0;
 	anisotropicSamplerDesc.BorderColor[1] = 0;
@@ -1904,6 +1925,42 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 			);
 		});
 	}
+
+	m_deviceResources->GetD3DDeviceContext()->OMGetRenderTargets(1, baseRTV.GetAddressOf(), baseDSV.GetAddressOf());
+
+	D3D11_TEXTURE2D_DESC reflectionTextureDesc;
+	ZeroMemory(&reflectionTextureDesc, sizeof(reflectionTextureDesc));
+	reflectionTextureDesc.Width = 512;
+	reflectionTextureDesc.Height = 512;
+	reflectionTextureDesc.MipLevels = 1;
+	reflectionTextureDesc.ArraySize = 1;
+	reflectionTextureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	reflectionTextureDesc.SampleDesc.Count = 1;
+	reflectionTextureDesc.SampleDesc.Quality = D3D11_STANDARD_MULTISAMPLE_QUALITY_LEVELS::D3D11_STANDARD_MULTISAMPLE_PATTERN;
+	reflectionTextureDesc.Usage = D3D11_USAGE::D3D11_USAGE_DEFAULT;
+	reflectionTextureDesc.BindFlags = D3D11_BIND_FLAG::D3D11_BIND_RENDER_TARGET | D3D11_BIND_FLAG::D3D11_BIND_SHADER_RESOURCE;
+	reflectionTextureDesc.MiscFlags = 0;
+
+	m_deviceResources->GetD3DDevice()->CreateTexture2D(&reflectionTextureDesc, NULL, squarePoolWaterReflectionTexture.GetAddressOf());
+	m_deviceResources->GetD3DDevice()->CreateTexture2D(&reflectionTextureDesc, NULL, squarePoolWaterRefractionTexture.GetAddressOf());
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC refractionSRVDesc;
+	ZeroMemory(&refractionSRVDesc, sizeof(refractionSRVDesc));
+	refractionSRVDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	refractionSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	refractionSRVDesc.Texture2D.MipLevels = -1;	//-1 sets it to use all mip levels from most detailed
+	refractionSRVDesc.Texture2D.MostDetailedMip = 0;
+	m_deviceResources->GetD3DDevice()->CreateShaderResourceView((ID3D11Resource*)squarePoolWaterRefractionTexture.Get(), &refractionSRVDesc, squarePoolWaterRefractionSRV.GetAddressOf());
+	m_deviceResources->GetD3DDevice()->CreateShaderResourceView((ID3D11Resource*)squarePoolWaterReflectionTexture.Get(), &refractionSRVDesc, squarePoolWaterReflectionSRV.GetAddressOf());
+
+	D3D11_RENDER_TARGET_VIEW_DESC refractionRTVDesc;
+	ZeroMemory(&refractionRTVDesc, sizeof(refractionRTVDesc));
+	refractionRTVDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	refractionRTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+	refractionSRVDesc.Texture2D.MipLevels = -1;
+	refractionSRVDesc.Texture2D.MostDetailedMip = 0;
+	m_deviceResources->GetD3DDevice()->CreateRenderTargetView((ID3D11Resource*)squarePoolWaterRefractionTexture.Get(), &refractionRTVDesc, squarePoolWaterRefractionRTV.GetAddressOf());
+	m_deviceResources->GetD3DDevice()->CreateRenderTargetView((ID3D11Resource*)squarePoolWaterReflectionTexture.Get(), &refractionRTVDesc, squarePoolWaterReflectionRTV.GetAddressOf());
 #pragma endregion
 
 #pragma region THREADJOINING
@@ -1924,6 +1981,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 #pragma endregion
 
 #pragma region MIPGENERATION
+	//Unneeded, as mip levels are made in the resources before they're loaded
 	//m_deviceResources->GetD3DDeviceContext()->GenerateMips(greenMarbleDiffuseSRV.Get());
 	//m_deviceResources->GetD3DDeviceContext()->GenerateMips(greenMarbleNormalSRV.Get());
 #pragma endregion
@@ -2028,9 +2086,15 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	squarePoolMossNormalTexture.Reset();
 	squarePoolPixelShader.Reset();
 	squarePoolInstanceList.clear();
+	//squarePoolWater
 	squarePoolWaterDiffuseSRV.Reset();
 	squarePoolWaterNormalSRV.Reset();
 	squarePoolWaterDiffuseTexture.Reset();
 	squarePoolWaterNormalTexture.Reset();
 	squarePoolWaterPixelShader.Reset();
+	//water RTVs
+	squarePoolWaterReflectionRTV.Reset();
+	squarePoolWaterReflectionTexture.Reset();
+	squarePoolWaterRefractionRTV.Reset();
+	squarePoolWaterRefractionTexture.Reset();
 }
