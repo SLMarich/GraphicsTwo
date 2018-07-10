@@ -71,12 +71,12 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 
 	XMMATRIX orientationMatrix = XMLoadFloat4x4(&orientation);
 
-	XMStoreFloat4x4(
+	DirectX::XMStoreFloat4x4(
 		&m_constantBufferData.projection,
 		XMMatrixTranspose(perspectiveMatrix * orientationMatrix)
 		);
 
-	XMStoreFloat4x4(
+	DirectX::XMStoreFloat4x4(
 		&projection,
 		XMMatrixTranspose(perspectiveMatrix * orientationMatrix)
 	);
@@ -86,8 +86,8 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 	static const XMVECTORF32 at = { 0.0f, 1.0f, 0.0f, 0.0f };
 	static const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
 
-	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtRH(eye, at, up)));
-	XMStoreFloat4x4(&camera, XMMatrixLookAtRH(eye, at, up));
+	DirectX::XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtRH(eye, at, up)));
+	DirectX::XMStoreFloat4x4(&camera, XMMatrixLookAtRH(eye, at, up));
 #pragma endregion
 
 #pragma region MINIMAPVIEWPROJECTION
@@ -110,7 +110,7 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 
 	XMMATRIX orientationMatrix1 = XMLoadFloat4x4(&orientation1);
 
-	XMStoreFloat4x4(
+	DirectX::XMStoreFloat4x4(
 		&projection1,
 		XMMatrixTranspose(perspectiveMatrix1 * orientationMatrix1)
 	);
@@ -119,7 +119,7 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 	static const XMVECTORF32 at1 = { 0.0f, -1.0f, 0.0f, 0.0f };
 	static const XMVECTORF32 up1 = { 0.0f, 1.0f, 0.0f, 0.0f };
 
-	XMStoreFloat4x4(&camera1, XMMatrixLookAtRH(eye1, at1, up1));
+	DirectX::XMStoreFloat4x4(&camera1, XMMatrixLookAtRH(eye1, at1, up1));
 #pragma endregion
 }
 
@@ -139,7 +139,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 #pragma region CAMERAUPDATE
 	XMMATRIX newCam = XMLoadFloat4x4(&camera);
 	
-	if (buttons['W']) {
+	if (buttons['W'] || buttons['E']) {
 		//Moves the camera in the direction it is facing
 		newCam.r[3] = newCam.r[3] + newCam.r[2] * -(float)timer.GetElapsedSeconds()*5.0f;
 	}
@@ -177,7 +177,11 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 		if (left_click)
 		{
 			XMVECTOR pos = newCam.r[3];
-			newCam.r[3] = XMLoadFloat4(&XMFLOAT4(0, 0, 0, 1));
+			//newCam.r[3] = XMLoadFloat4(&XMFLOAT4(0.0f, 0.f, 0.0f, 1.0f));
+			newCam.r[3].m128_f32[0] = 0.0f;
+			newCam.r[3].m128_f32[1] = 0.0f;
+			newCam.r[3].m128_f32[2] = 0.0f;
+			newCam.r[3].m128_f32[3] = 1.0f;
 			newCam = XMMatrixRotationX(-diffy*0.01f) * newCam * XMMatrixRotationY(-diffx*0.01f);
 			newCam.r[3] = pos;
 		}
@@ -189,8 +193,8 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	}
 
 	
-	XMStoreFloat4x4(&camera, newCam);
-	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, newCam)));
+	DirectX::XMStoreFloat4x4(&camera, newCam);
+	DirectX::XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, newCam)));
 	//XMStoreFloat4x4(&m_constantBufferData.view, newCam);
 	//Move skybox to camera
 	XMMATRIX camerapos = XMMatrixTranslation(camera._41, camera._42, camera._43);
@@ -200,8 +204,8 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 #pragma endregion
 
 #pragma region CUBELIGHTUPDATE
-	XMStoreFloat4x4(&cubelightModel, DirectX::XMMatrixIdentity());
-	XMStoreFloat4x4(&cubelightModel, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationX((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
+	DirectX::XMStoreFloat4x4(&cubelightModel, DirectX::XMMatrixIdentity());
+	DirectX::XMStoreFloat4x4(&cubelightModel, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationX((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
 		XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
 			XMMatrixTranspose(XMMatrixRotationZ((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
 	//XMStoreFloat4x4(&cubelightModel, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
@@ -213,7 +217,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 #pragma endregion
 
 #pragma region GREENMARBLEUPDATE
-	XMStoreFloat4x4(&greenMarble_loader.modelMatrix, XMMatrixIdentity());
+	DirectX::XMStoreFloat4x4(&greenMarble_loader.modelMatrix, XMMatrixIdentity());
 #pragma endregion
 
 #pragma region LIGHTINGUPDATES
@@ -241,17 +245,17 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	XMFLOAT4X4 spotlightDirection;
 	//XMStoreFloat4x4(&spotlightPosition, XMMatrixMultiply(XMMatrixTranslation(15.0f, 0.0f, 15.0f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
 	//XMStoreFloat4x4(&spotlightDirection, XMMatrixMultiply(XMMatrixTranslation(0.5f, -1.0f, 0.5f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
-	XMStoreFloat4x4(&spotlightPosition, XMMatrixMultiply(XMMatrixTranslation(15.0f, 0.0f, 15.0f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
-	XMStoreFloat4x4(&spotlightDirection, XMMatrixMultiply(XMMatrixTranslation(0.5f, -1.0f, 0.5f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	DirectX::XMStoreFloat4x4(&spotlightPosition, XMMatrixMultiply(XMMatrixTranslation(15.0f, 0.0f, 15.0f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	DirectX::XMStoreFloat4x4(&spotlightDirection, XMMatrixMultiply(XMMatrixTranslation(0.5f, -1.0f, 0.5f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 1.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
 	//sampleLight.spotlightPosition = DirectX::XMFLOAT3(instanceList[instanceTracer].position.x, 0.0f, instanceList[instanceTracer].position.z);
 	sampleLight.spotlightPosition = DirectX::XMFLOAT3(spotlightPosition._41, spotlightPosition._42, spotlightPosition._43);
 	sampleLight.spotlightDirection = DirectX::XMFLOAT3(-spotlightDirection._41, -spotlightDirection._42, -spotlightDirection._43);
 
 	//XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMMatrixMultiply(XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))),
 	//	XMMatrixTranspose(XMMatrixRotationZ((XM_2PI * 2.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
-	XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMLoadFloat4x4(&cubelightModel));
+	DirectX::XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMLoadFloat4x4(&cubelightModel));
 
-	XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMMatrixInverse(&XMMatrixDeterminant(XMLoadFloat4x4(&sampleLight.pointRotationMatrix)), XMLoadFloat4x4(&sampleLight.pointRotationMatrix)));
+	DirectX::XMStoreFloat4x4(&sampleLight.pointRotationMatrix, XMMatrixInverse(&XMMatrixDeterminant(XMLoadFloat4x4(&sampleLight.pointRotationMatrix)), XMLoadFloat4x4(&sampleLight.pointRotationMatrix)));
 #pragma endregion
 
 #pragma region INSTANCEUPDATES
@@ -266,9 +270,9 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 		for (unsigned int j = 0; j < 30; j++) {
 			instanceList[i * 30 + j].position = DirectX::XMFLOAT3((float)(i + i) - 30.0f + infiniteGroundX, -2.0f, (float)(j + j) - 30.0f + infiniteGroundZ);
 			XMMATRIX groundRotation = XMMatrixMultiply(XMMatrixTranslation(instanceList[i * 30 + j].position.x, instanceList[i * 30 + j].position.y, instanceList[i * 30 + j].position.z), XMLoadFloat4x4(&cubelightModel));
-			XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixIdentity());
+			DirectX::XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixIdentity());
 			if (groundMove){
-				XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixTranspose(groundRotation));
+				DirectX::XMStoreFloat4x4(&instanceList[i * 30 + j].rotation, XMMatrixTranspose(groundRotation));
 				//instanceList[i * 30 + j].position = XMFLOAT3(groundRotation.r[3].m128_f32[0], groundRotation.r[3].m128_f32[1], groundRotation.r[3].m128_f32[2]);
 				instanceList[i * 30 + j].position = XMFLOAT3(instanceList[i * 30 + j].position.x *2.0f, instanceList[i * 30 + j].position.y, instanceList[i * 30 + j].position.z*2.0f);
 			}
@@ -314,7 +318,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	//XMStoreFloat4x4(&geoCubeLightInstanceList[2].rotation, XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)));
 	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixIdentity());
 	//XMStoreFloat4x4(&geoCubeLightInstanceList[0].rotation, XMMatrixIdentity());
-	XMStoreFloat4x4(&geoInstanceList[0].matrix,
+	DirectX::XMStoreFloat4x4(&geoInstanceList[0].matrix,
 		XMMatrixTranspose(
 			XMMatrixMultiply(
 				XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
@@ -324,27 +328,27 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	activeGlassSphereInstances = 14;
 	
 	XMFLOAT4X4 glassSphereMover;
-	XMStoreFloat4x4(&glassSphereMover, XMMatrixMultiply(XMMatrixTranslation(15.0f, 0.0f, 15.0f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 8.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
+	DirectX::XMStoreFloat4x4(&glassSphereMover, XMMatrixMultiply(XMMatrixTranslation(15.0f, 0.0f, 15.0f), XMMatrixTranspose(XMMatrixRotationY((XM_2PI * 8.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width)))));
 
-	XMStoreFloat4x4(&glassSphereInstanceList[0].matrix,
+	DirectX::XMStoreFloat4x4(&glassSphereInstanceList[0].matrix,
 		XMMatrixTranspose(
 			XMMatrixMultiply(
 				XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
 				XMMatrixMultiply(XMMatrixTranslation(glassSphereMover._41*.1f, glassSphereMover._43*.1f + 5.0f, glassSphereMover._41*.1f),
 					XMMatrixRotationY((XM_2PI * 4.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
-	XMStoreFloat4x4(&glassSphereInstanceList[1].matrix,
+	DirectX::XMStoreFloat4x4(&glassSphereInstanceList[1].matrix,
 		XMMatrixTranspose(
 			XMMatrixMultiply(
 				XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
 				XMMatrixMultiply(XMMatrixTranslation(glassSphereMover._43*.1f, glassSphereMover._41*.1f + 5.0f, -glassSphereMover._43*.1f),
 					XMMatrixRotationY((XM_2PI * 4.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
-	XMStoreFloat4x4(&glassSphereInstanceList[2].matrix,
+	DirectX::XMStoreFloat4x4(&glassSphereInstanceList[2].matrix,
 		XMMatrixTranspose(
 			XMMatrixMultiply(
 				XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
 				XMMatrixMultiply(XMMatrixTranslation(-glassSphereMover._41*.1f, -glassSphereMover._43*.1f + 5.0f, -glassSphereMover._41*.1f),
 					XMMatrixRotationY((XM_2PI * 4.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
-	XMStoreFloat4x4(&glassSphereInstanceList[3].matrix,
+	DirectX::XMStoreFloat4x4(&glassSphereInstanceList[3].matrix,
 		XMMatrixTranspose(
 			XMMatrixMultiply(
 				XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
@@ -352,7 +356,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 					XMMatrixRotationY((XM_2PI * 4.0f * 65.0f * (float)(timer.GetTotalSeconds()) / m_deviceResources->GetOutputSize().Width))))));
 
 	for (unsigned int i = 4; i < activeGlassSphereInstances; i++) {
-		XMStoreFloat4x4(&glassSphereInstanceList[i].matrix,
+		DirectX::XMStoreFloat4x4(&glassSphereInstanceList[i].matrix,
 			XMMatrixTranspose(
 				XMMatrixMultiply(
 					XMMatrixTranspose(XMLoadFloat4x4(&cubelightModel)),
@@ -375,7 +379,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	activeSquarePoolInstances = 1;
 
 	//XMStoreFloat4x4(&squarePoolInstanceList[0].matrix, XMMatrixTranspose(XMMatrixTranslation(-41.0f, -4.0f, 0.0f)));
-	XMStoreFloat4x4(&squarePoolInstanceList[0].matrix, XMMatrixTranspose(XMMatrixTranslation(0.0f, -4.0f, 0.0f)));
+	DirectX::XMStoreFloat4x4(&squarePoolInstanceList[0].matrix, XMMatrixTranspose(XMMatrixTranslation(0.0f, -4.0f, 0.0f)));
 #pragma endregion
 #pragma region POOLWATERUPDATES
 	poolWaterOffsetTimer--;
@@ -422,7 +426,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 void Sample3DSceneRenderer::Rotate(float radians)
 {
 	// Prepare to pass the updated model matrix to the shader
-	XMStoreFloat4x4(&cubeModel, XMMatrixTranspose(XMMatrixRotationY(radians)));
+	DirectX::XMStoreFloat4x4(&cubeModel, XMMatrixTranspose(XMMatrixRotationY(radians)));
 }
 
 void Sample3DSceneRenderer::StartTracking()
@@ -470,9 +474,9 @@ void Sample3DSceneRenderer::Render()
 		//}
 		if (viewTracker == 0) {
 			//Set camera view
-			XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, XMLoadFloat4x4(&camera))));
+			DirectX::XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, XMLoadFloat4x4(&camera))));
 			//Set camera projection
-			XMStoreFloat4x4(&m_constantBufferData.projection, XMLoadFloat4x4(&projection));
+			DirectX::XMStoreFloat4x4(&m_constantBufferData.projection, XMLoadFloat4x4(&projection));
 			
 			//For reflections
 			//ID3D11RenderTargetView* rtvs[2];
@@ -490,10 +494,10 @@ void Sample3DSceneRenderer::Render()
 		if (viewTracker == 1) {
 			//Set camera view
 			//XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(&XMMatrixDeterminant(XMLoadFloat4x4(&camera1)), XMLoadFloat4x4(&camera1))));
-			XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, XMMatrixMultiply(XMMatrixRotationX((XM_2PI * 4.0f * -180.0f / (m_deviceResources->GetOutputSize().Width*0.3f))),
+			DirectX::XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, XMMatrixMultiply(XMMatrixRotationX((XM_2PI * 4.0f * -180.0f / (m_deviceResources->GetOutputSize().Width*0.3f))),
 				XMMatrixTranslation(camera._41, 15.0f, camera._43)))));
 			//Set camera projection
-			XMStoreFloat4x4(&m_constantBufferData.projection, XMLoadFloat4x4(&projection1));
+			DirectX::XMStoreFloat4x4(&m_constantBufferData.projection, XMLoadFloat4x4(&projection1));
 			//XMStoreFloat4x4(&m_constantBufferData.projection, XMMatrixIdentity());
 
 			//Activate wireframe mode for minimap
@@ -587,7 +591,7 @@ void Sample3DSceneRenderer::Render()
 		if (!geoShaderEnabled) {
 			// Prepare the constant buffer to send it to the graphics device.
 			//XMStoreFloat4x4(&m_constantBufferData.model,XMMatrixTranspose(XMLoadFloat4x4(&cubeModel)));
-			XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
+			DirectX::XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
 			context->UpdateSubresource1(
 				m_constantBuffer.Get(),
 				0,
@@ -656,7 +660,7 @@ void Sample3DSceneRenderer::Render()
 		else {
 			for (unsigned int i = 0; i < geoCubeLight.materialCount; i++) {
 				//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&cubelightModel));
-				XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMMatrixIdentity());
+				DirectX::XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMMatrixIdentity());
 				//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&geoCubeLight.modelMatrix));
 				//context->UpdateSubresource1(geoInstanceBuffer.Get(), 0, NULL, geoCubeLightInstanceList.data(), 0, 0, 0);
 				context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, geoInstanceList.data(), 0, 0, 0);
@@ -746,7 +750,7 @@ void Sample3DSceneRenderer::Render()
 #pragma region GREENMARBLEDRAW
 		for (unsigned int i = 0; i < greenMarble_loader.materialCount; i++) {
 			//m_constantBufferData.model = greenMarbleModel;
-			XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarble_loader.modelMatrix)));
+			DirectX::XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarble_loader.modelMatrix)));
 			context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 			context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
 			context->UpdateSubresource1(instanceBuffer.Get(), 0, NULL, instanceList.data(), 0, 0, 0);
@@ -807,7 +811,7 @@ void Sample3DSceneRenderer::Render()
 		for (unsigned int i = 0; i < pillarType1_loader.materialCount; i++) {
 			//m_constantBufferData.model = greenMarbleModel;
 			//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
-			XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixIdentity());
+			DirectX::XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixIdentity());
 			context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 			context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
 			context->UpdateSubresource1(instanceBuffer.Get(), 0, NULL, pillarType1InstanceList.data(), 0, 0, 0);
@@ -867,7 +871,7 @@ void Sample3DSceneRenderer::Render()
 		for (unsigned int i = 0; i < squarePool.materialCount; i++) {
 			//m_constantBufferData.model = greenMarbleModel;
 			//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
-			XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&squarePool.modelMatrix));
+			DirectX::XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&squarePool.modelMatrix));
 			context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 			context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
 			context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, squarePoolInstanceList.data(), 0, 0, 0);
@@ -925,7 +929,7 @@ void Sample3DSceneRenderer::Render()
 		for (unsigned int i = 0; i < squarePoolWater.materialCount; i++) {
 			//m_constantBufferData.model = greenMarbleModel;
 			//XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMLoadFloat4x4(&greenMarbleModel)));
-			XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&squarePoolWater.modelMatrix));
+			DirectX::XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&squarePoolWater.modelMatrix));
 			context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 			context->UpdateSubresource1(lightConstantBuffer.Get(), 0, NULL, &sampleLight, 0, 0, 0);
 			context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, squarePoolInstanceList.data(), 0, 0, 0);
@@ -989,7 +993,7 @@ void Sample3DSceneRenderer::Render()
 		if (!geoShaderEnabled) {
 			for (unsigned int i = 0; i < glassSphere.materialCount; i++) {
 				// Prepare the constant buffer to send it to the graphics device.
-				XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&glassSphere.modelMatrix));
+				DirectX::XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&glassSphere.modelMatrix));
 				context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, glassSphereInstanceList.data(), 0, 0, 0);
 				context->UpdateSubresource1(
 					m_constantBuffer.Get(),
@@ -1059,7 +1063,7 @@ void Sample3DSceneRenderer::Render()
 #pragma region GEOSHADERACTIVE
 		else {
 			for (unsigned int i = 0; i < glassSphere.materialCount; i++) {
-				XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&glassSphere.modelMatrix));
+				DirectX::XMStoreFloat4x4(&m_constantBufferData.model, XMLoadFloat4x4(&glassSphere.modelMatrix));
 				//XMStoreFloat4x4(&m_constantBufferData.model, DirectX::XMLoadFloat4x4(&geoCubeLight.modelMatrix));
 				//context->UpdateSubresource1(geoInstanceBuffer.Get(), 0, NULL, geoCubeLightInstanceList.data(), 0, 0, 0);
 				context->UpdateSubresource1(cubeLightInstanceBuffer.Get(), 0, NULL, glassSphereInstanceList.data(), 0, 0, 0);
@@ -1567,7 +1571,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		);
 	});
 
-	XMStoreFloat4x4(&cubeModel, XMMatrixIdentity());
+	DirectX::XMStoreFloat4x4(&cubeModel, XMMatrixIdentity());
 	//XMStoreFloat4x4(&cubeModel, XMMatrixTranslation(0.0f,-1.0f, 0.0f));
 #pragma endregion
 
@@ -1876,7 +1880,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 #pragma region GLASSSPHERE
 	bool glassSphereLoaded = glassSphere.loadMaterialOBJ(m_deviceResources, "Assets\\7x7sphere\\glassSphere.obj");
-	XMStoreFloat4x4(&glassSphere.modelMatrix, XMMatrixTranspose(XMMatrixTranslation(0.0f, 2.0f, 0.0f)));
+	DirectX::XMStoreFloat4x4(&glassSphere.modelMatrix, XMMatrixTranspose(XMMatrixTranslation(0.0f, 2.0f, 0.0f)));
 
 	if (glassSphereLoaded) {
 		auto loadGlassSpherePSTask = DX::ReadDataAsync(L"glassSpherePixelShader.cso");
